@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Demo automatización contable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Plan: barra lateral azul fija + área de trabajo clara con tablas densas; el detalle abre en un panel lateral. Tema único claro. */
+  --navy:#16396f; --navy-deep:#0f2b57; --teal:#2c7d94; --teal-soft:#e3f0f4; --amber:#d28d32;
+  --paper:#f1f3f6; --surface:#ffffff; --ink:#16283f; --muted:#5b6a7f; --line:#dbe1e9;
+  --ok:#1a7f55; --ok-soft:#e2f3eb; --warn:#935607; --warn-soft:#fbefd9; --bad:#b0352d; --bad-soft:#fae8e6;
+  --display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:8px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font:400 14px/1.5 var(--body);-webkit-font-smoothing:antialiased}
+h1,h2,h3,p{margin:0}
+h1{font:700 26px/1.2 var(--display);letter-spacing:-.01em;text-wrap:balance;color:var(--navy-deep)}
+h2{font:600 17px/1.3 var(--display);color:var(--navy-deep);text-wrap:balance}
+h3{font:600 15px/1.3 var(--display);color:var(--navy-deep)}
+a{color:var(--teal)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+svg.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ---------- estructura ---------- */
+.app{display:grid;grid-template-columns:208px minmax(0,1fr);height:100%}
+.side{background:var(--navy);color:#fff;display:flex;flex-direction:column;gap:22px;padding:20px 14px;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px}
+.brand .glyph{width:34px;height:34px;border-radius:8px;background:#fff;display:grid;place-items:center;color:var(--navy);flex:none}
+.brand .glyph svg{width:20px;height:20px;stroke-width:1.8}
+.brand strong{display:block;font:600 15px/1.15 var(--display)}
+.brand span{display:block;font-size:12px;color:#b9c9e3}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:6px;color:#d5e0f2;text-decoration:none;font-weight:500}
+.nav a:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav a[aria-current="page"]{background:#fff;color:var(--navy-deep)}
+.nav .count{margin-left:auto;min-width:22px;padding:0 6px;border-radius:11px;background:var(--amber);color:var(--navy-deep);font:600 12px/20px var(--body);text-align:center}
+.nav .count:empty{display:none}
+.side-foot{margin-top:auto;padding:10px;border:1px solid rgba(255,255,255,.18);border-radius:6px;font-size:12px;line-height:1.45;color:#c6d3ea}
+.side-foot strong{color:#fff;font-weight:600}
+.main{display:flex;flex-direction:column;min-width:0;height:100%;overflow:hidden}
+.top{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:10px 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+.cli{display:flex;flex-direction:column;margin-right:auto;min-width:0}
+.cli strong{font:600 15px/1.25 var(--display);color:var(--navy-deep)}
+.cli span{font-size:12px;color:var(--muted)}
+.tag{padding:2px 8px;border-radius:4px;background:var(--warn-soft);color:var(--warn);font:600 11px/18px var(--body);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+#view{flex:1;overflow:auto;padding:24px 24px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.lead{color:var(--muted);font-size:15px;max-width:68ch;margin-top:6px}
+.hero{display:flex;gap:16px 24px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.hero .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- controles ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 14px;border-radius:6px;border:1px solid transparent;font-weight:600;font-size:14px;line-height:1.2;cursor:pointer;text-decoration:none;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn.sm{padding:6px 10px;font-size:13px}
+.btn.primary{background:var(--teal);color:#fff}
+.btn.primary:hover{background:#236a7f}
+.btn.cta{background:var(--amber);color:var(--navy-deep);padding:12px 20px;font-size:15px;box-shadow:0 1px 0 rgba(15,43,87,.25)}
+.btn.cta:hover{background:#c27f25}
+.btn.ghost{background:var(--surface);border-color:var(--line);color:var(--navy-deep)}
+.btn.ghost:hover{border-color:var(--teal);color:var(--teal)}
+.btn[disabled]{opacity:.7;cursor:default}
+.icon-btn{display:grid;place-items:center;width:32px;height:32px;border-radius:6px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--muted)}
+.icon-btn:hover{color:var(--navy-deep);border-color:var(--navy)}
+select,input[type="number"],input[type="text"]{padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:5px 11px;border-radius:15px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:500;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:11px;font:600 12px/18px var(--body);white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--teal-soft);color:var(--teal)}
+.pill.neutral{background:#e9edf2;color:var(--muted)}
+.pill.run{background:var(--teal-soft);color:var(--teal)}
+.pill.run::before{width:9px;height:9px;background:none;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.code{font:500 12px var(--mono);color:var(--teal);background:var(--teal-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.sim{font:600 10px/16px var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:0 5px;margin-left:6px;white-space:nowrap}
+
+/* ---------- tarjetas, mosaicos, proceso ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.card-h{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.card-h small{color:var(--muted);font-size:12px}
+.card-b{padding:14px 16px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;display:flex;flex-direction:column;gap:2px}
+.tile b{font:700 28px/1.1 var(--display);color:var(--navy-deep);font-variant-numeric:tabular-nums}
+.tile b small{font:500 15px var(--body);color:var(--muted)}
+.tile span{font-size:13px;color:var(--muted)}
+.tile.attn b{color:var(--warn)}
+.pipe{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.pipe li{position:relative;padding:15px 16px 13px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:1px;min-width:0}
+.pipe li:first-child{border-left:0}
+.pipe li::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:#e6eaf0;transition:background .25s}
+.pipe li.done::before{background:var(--teal)}
+.pipe li.active::before{background:var(--amber)}
+.pipe .n{font:700 24px/1.15 var(--display);color:var(--navy-deep);font-variant-numeric:tabular-nums}
+.pipe .n small{font:500 13px var(--body);color:var(--muted)}
+.pipe strong{font-weight:600}
+.pipe .c{font-size:12px;color:var(--muted)}
+.cols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:18px;align-items:start}
+.stack{display:flex;flex-direction:column;gap:18px;min-width:0}
+
+/* ---------- bandeja ---------- */
+.inbox{list-style:none;margin:0;padding:0}
+.in-row{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:9px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.inbox li:last-child .in-row{border-bottom:0}
+.in-row:hover{background:#f6f8fb}
+.in-row strong{display:block;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.in-row small{display:block;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ch{display:grid;place-items:center;width:30px;height:30px;border-radius:6px;background:#eef1f5;color:var(--navy)}
+.ch.whatsapp{background:#e2f3eb;color:var(--ok)}
+.ch.arca{background:var(--teal-soft);color:var(--teal)}
+.ch.subido{background:var(--warn-soft);color:var(--warn)}
+.bar{height:6px;border-radius:3px;background:#e6eaf0;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--teal);border-radius:3px;transition:width .12s linear}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--ink)}
+.res-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.res-list li{display:flex;gap:10px;align-items:flex-start}
+.res-list svg{margin-top:2px;color:var(--ok)}
+.res-list li.w svg{color:var(--warn)}
+.note{font-size:12px;color:var(--muted)}
+
+/* ---------- tablas ---------- */
+.tbl-wrap{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{position:sticky;top:0;background:#f6f8fb;text-align:left;font:600 11px/1.3 var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl .num{text-align:right;font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl th.num{font-family:var(--body);font-size:11px}
+.tbl td small{display:block;color:var(--muted);font-size:12px}
+.tbl tr.click{cursor:pointer}
+.tbl tr.click:hover td{background:#f6f8fb}
+.tbl tr.dim td{color:var(--muted)}
+.tbl tfoot td{font-weight:600;background:#f6f8fb;border-top:1px solid var(--line);border-bottom:0}
+.neg{color:var(--bad)}
+.tbl .stick{position:sticky;right:0;background:var(--surface);box-shadow:-10px 0 10px -10px rgba(15,43,87,.22)}
+.tbl th.stick{background:#f6f8fb}
+.nowrap{white-space:nowrap}
+.w-prov{min-width:150px}
+.w-cta{min-width:150px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.empty .btn{margin-top:12px}
+
+/* ---------- excepciones ---------- */
+.exc{display:grid;grid-template-columns:4px minmax(0,1fr);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.exc::before{content:"";background:var(--amber)}
+.exc.bad::before{background:var(--bad)}
+.exc.res::before{background:var(--ok)}
+.exc-main{padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.exc-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.exc p{max-width:78ch}
+.exc-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.exc-acts label{font-size:13px;color:var(--muted)}
+.msg{background:#f6f8fb;border:1px dashed var(--line);border-radius:6px;padding:10px 12px;font-size:13px;white-space:pre-wrap}
+.resol{display:flex;gap:8px;align-items:flex-start;color:var(--ok);font-weight:500}
+
+/* ---------- panel de detalle ---------- */
+.scrim{position:fixed;inset:0;background:rgba(15,43,87,.38);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(1060px,100%);background:var(--paper);z-index:21;display:flex;flex-direction:column;box-shadow:-12px 0 32px rgba(15,43,87,.18)}
+.dw-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.dw-head p{color:var(--muted);font-size:13px}
+.dw-head .r{display:flex;gap:10px;align-items:center;flex:none}
+.eyebrow{font:600 11px/1.4 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.dw-body{flex:1;overflow:auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;padding:18px 20px 40px;align-items:start}
+.dw-body.one{grid-template-columns:minmax(0,640px);justify-content:center}
+.dw-data{display:flex;flex-direction:column;gap:14px;min-width:0}
+.sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.sec h3{font:600 12px/1.3 var(--body);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+.callout{border-radius:var(--r);padding:11px 14px;display:flex;flex-direction:column;gap:6px}
+.callout.warn{background:var(--warn-soft);color:#5f3904}
+.callout.ok{background:var(--ok-soft);color:#0f5437}
+.callout strong{font-weight:600}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:start}
+.checks .m{width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--ok-soft);color:var(--ok);margin-top:1px}
+.checks .m svg{width:12px;height:12px;stroke-width:2.2}
+.checks li.fail .m{background:var(--bad-soft);color:var(--bad)}
+.checks li.soft .m{background:var(--warn-soft);color:var(--warn)}
+.checks small{display:block;color:var(--muted);font-size:12px}
+.conf{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.conf .bar{flex:1;max-width:160px}
+
+/* comprobante de ejemplo */
+.prev{position:sticky;top:0}
+.foto{background:#434a55;padding:22px 20px;border-radius:var(--r)}
+.foto .fx{transform:rotate(-1.4deg);filter:sepia(.14) contrast(.96)}
+.fx{position:relative;background:#fff;border:1px solid #c9d0da;color:#1c2430;font:11px/1.45 var(--body);box-shadow:0 1px 2px rgba(15,43,87,.08),0 10px 28px rgba(15,43,87,.1);overflow:hidden}
+.fx-wm{position:absolute;inset:0;display:grid;place-items:center;font:700 58px var(--display);letter-spacing:.14em;color:rgba(22,57,111,.07);transform:rotate(-24deg);pointer-events:none;user-select:none}
+.fx-head{display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);border-bottom:1px solid #1c2430}
+.fx-head>div{padding:11px 12px}
+.fx-head b.rs{display:block;font:700 13px/1.25 var(--display);margin-bottom:3px}
+.fx-letra{border-left:1px solid #1c2430;border-right:1px solid #1c2430;text-align:center;padding:8px 0 !important}
+.fx-letra b{display:block;font:700 30px/1 var(--display)}
+.fx-letra span{font-size:9px}
+.fx-tipo{font:700 15px/1.2 var(--display);margin-bottom:3px}
+.fx-rec{padding:9px 12px;border-bottom:1px solid #c9d0da;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
+.fx table{width:100%;border-collapse:collapse}
+.fx th{background:#eef1f5;text-align:left;font-weight:600;padding:5px 12px;font-size:10px}
+.fx td{padding:6px 12px;border-bottom:1px solid #eef1f5;vertical-align:top}
+.fx .r{text-align:right;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+.fx-tot{padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:3px 18px;justify-content:end;border-top:1px solid #c9d0da;margin-top:26px}
+.fx-tot span{text-align:right}
+.fx-tot b{font-family:var(--mono);text-align:right;font-weight:500}
+.fx-tot .t{font-weight:700;font-size:12.5px}
+.fx-cae{padding:9px 12px;border-top:1px solid #1c2430;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:10.5px}
+.hl{background:linear-gradient(transparent 62%,rgba(44,125,148,.28) 62%)}
+.smudge{filter:blur(1.6px);background:rgba(120,90,40,.12)}
+.shot{background:#434a55;padding:12px;border-radius:var(--r)}
+.shot img{display:block;max-width:100%;margin:0 auto;border-radius:3px}
+
+/* ---------- exportación e impacto ---------- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px;flex-wrap:wrap}
+.tab{padding:10px 12px;border:0;background:none;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--navy-deep);border-bottom-color:var(--amber)}
+.sheet{max-height:440px;overflow:auto}
+.sheet .tbl td,.sheet .tbl th{padding:6px 10px;white-space:nowrap}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:13px;color:var(--muted)}
+.field input{font-family:var(--mono);font-size:14px}
+.cmp{display:flex;flex-direction:column;gap:14px}
+.cmp-row{display:grid;grid-template-columns:150px minmax(0,1fr) 84px;gap:12px;align-items:center}
+.cmp-row .bar{height:22px;border-radius:4px}
+.cmp-row .bar i{border-radius:4px;transition:width .3s}
+.cmp-row.a .bar i{background:#9aa7ba}
+.cmp-row b{font:600 15px var(--mono);text-align:right}
+.big{font:700 40px/1.05 var(--display);color:var(--navy-deep);font-variant-numeric:tabular-nums}
+
+/* ---------- carga de comprobante real ---------- */
+.modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(15,43,87,.45)}
+.modal[hidden],.scrim[hidden],.drawer[hidden]{display:none}
+.modal-card{width:min(540px,100%);background:var(--surface);border-radius:10px;box-shadow:0 20px 60px rgba(15,43,87,.3);display:flex;flex-direction:column}
+.modal-card header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-b{padding:18px;display:flex;flex-direction:column;gap:12px}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:28px 16px;border:2px dashed #b9c4d3;border-radius:var(--r);text-align:center;cursor:pointer;color:var(--muted);background:#f8fafc}
+.drop.over,.drop:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
+.drop strong{color:var(--navy-deep);font-size:15px}
+.drop input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.work{display:flex;align-items:center;gap:12px;padding:18px 4px;color:var(--navy-deep);font-weight:500}
+.err{background:var(--bad-soft);color:var(--bad);border-radius:6px;padding:9px 12px;font-size:13px}
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:40;background:var(--navy-deep);color:#fff;padding:10px 16px;border-radius:6px;font-weight:500;box-shadow:0 8px 24px rgba(15,43,87,.3);max-width:calc(100% - 32px)}
+#toast[hidden]{display:none}
+
+@media (max-width:1380px){.tbl .opt{display:none}}
+@media (max-width:1020px){
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dw-body{grid-template-columns:minmax(0,1fr)}
+  .prev{position:static}
+}
+@media (max-width:820px){
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .side{flex-direction:row;align-items:center;gap:12px;padding:10px 14px}
+  .side-foot,.brand div{display:none}
+  .nav{flex-direction:row;gap:4px}
+  .nav a{padding:8px 10px;white-space:nowrap}
+  .nav a .lbl{display:none}
+  .nav a[aria-current="page"] .lbl{display:inline}
+  #view{padding:16px 16px 40px}
+  .top{padding:10px 16px}
+  .pipe{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pipe li{border-top:1px solid var(--line)}
+  .form{grid-template-columns:minmax(0,1fr)}
+  .cmp-row{grid-template-columns:minmax(0,1fr) 84px}
+  .cmp-row span{grid-column:1/-1}
+  h1{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition:none !important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <span class="glyph"><svg class="ic" viewBox="0 0 20 20"><path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/><path d="M7.4 11.6l1.9 1.9 3.4-3.8"/></svg></span>
+      <div><strong>Centro de Registración</strong><span>Estudio contable</span></div>
+    </div>
+    <nav class="nav" id="nav" aria-label="Secciones"></nav>
+    <div class="side-foot"><strong>Demo con datos ficticios.</strong> Empresas, CUIT, comprobantes e importes son inventados; cualquier coincidencia es casual.</div>
+  </aside>
+  <div class="main">
+    <header class="top">
+      <div class="cli"><strong id="cli-n"></strong><span id="cli-d"></span></div>
+      <span class="tag">Datos ficticios</span>
+      <button class="btn ghost sm" data-act="upload-open"><svg class="ic" viewBox="0 0 20 20"><path d="M10 13V4M6.5 7.5L10 4l3.5 3.5"/><path d="M4 13v3.5h12V13"/></svg>Probar con un comprobante real</button>
+      <button class="btn ghost sm" data-act="reset"><svg class="ic" viewBox="0 0 20 20"><path d="M4.2 10a5.8 5.8 0 1 0 1.9-4.3"/><path d="M4 3.6v3.6h3.6"/></svg>Reiniciar demo</button>
+    </header>
+    <main id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden data-act="close-drawer"></div>
+<aside class="drawer" id="drawer" hidden aria-label="Detalle"></aside>
+
+<div class="modal" id="up" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="up-t">
+    <header><h2 id="up-t">Probar con un comprobante real</h2><button class="icon-btn" data-act="upload-close" aria-label="Cerrar"><svg class="ic" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15"/></svg></button></header>
+    <div class="modal-b" id="up-b"></div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+'use strict';
+/* ================= utilidades ================= */
+const $ = (s, r = document) => r.querySelector(s);
+const r2 = n => Math.round(n * 100) / 100;
+const fmt = n => n.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = n => (n < 0 ? '−$ ' : '$ ') + fmt(Math.abs(n));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const pl = (n, s, p) => n === 1 ? s : p;
+const ICONS = {
+  panel: '<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
+  doc: '<path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11.5 2.5V6H15"/><path d="M7.5 10h5M7.5 13h5"/>',
+  bank: '<path d="M3 8l7-4.5L17 8"/><path d="M4.5 8v7M8 8v7M12 8v7M15.5 8v7"/><path d="M3 16.5h14"/>',
+  alert: '<path d="M10 3.2l7.3 12.8H2.7z"/><path d="M10 8.2v3.6M10 13.9v.2"/>',
+  export: '<path d="M10 3v9M6.5 8.5L10 12l3.5-3.5"/><path d="M4 14v3h12v-3"/>',
+  chart: '<path d="M4 16.5V10M8.2 16.5V5M12.4 16.5v-4M16.6 16.5V7.5"/>',
+  mail: '<rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5.5 7-5.5"/>',
+  whatsapp: '<path d="M3.6 16.4l.9-3.3a6.6 6.6 0 1 1 2.5 2.4z"/>',
+  carpeta: '<path d="M2.5 5.5v10h15v-8H10L8.3 5.5z"/>',
+  arca: '<path d="M10 2.5l6 2.2v4.6c0 3.6-2.5 6.3-6 7.7-3.5-1.4-6-4.1-6-7.7V4.7z"/><path d="M7.4 9.8l1.9 1.9 3.4-3.6"/>',
+  subido: '<path d="M10 13V4M6.5 7.5L10 4l3.5 3.5"/><path d="M4 13v3.5h12V13"/>',
+  check: '<path d="M4.5 10.5l3.5 3.5 7.5-8"/>',
+  x: '<path d="M5 5l10 10M15 5L5 15"/>',
+  bang: '<path d="M10 4.5v7M10 14.8v.2"/>',
+  play: '<path d="M6.5 4.5l9 5.5-9 5.5z" fill="currentColor"/>',
+  arrow: '<path d="M4 10h12M11.5 5.5L16 10l-4.5 4.5"/>',
+  copy: '<rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M13 7V4.5A1.5 1.5 0 0 0 11.5 3h-7A1.5 1.5 0 0 0 3 4.5v7A1.5 1.5 0 0 0 4.5 13H7"/>'
+};
+const ic = n => `<svg class="ic" viewBox="0 0 20 20" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+function cuitOk(c) {
+  const d = String(c || '').replace(/\D/g, '');
+  if (d.length !== 11) return false;
+  const w = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+  let s = 0; for (let i = 0; i < 10; i++) s += +d[i] * w[i];
+  let v = 11 - (s % 11); if (v === 11) v = 0;
+  return v !== 10 && v === +d[10];
+}
+const fmtCuit = c => { const d = String(c || '').replace(/\D/g, ''); return d.length === 11 ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d[10]}` : String(c || ''); };
+const ahoraTxt = () => { const n = new Date(), p = x => String(x).padStart(2, '0'); return `${p(n.getDate())}/${p(n.getMonth() + 1)} ${p(n.getHours())}:${p(n.getMinutes())}`; };
+const fechaKey = f => { const p = String(f).split('/'); return (p[2] || '2026') + (p[1] || '00').padStart(2, '0') + (p[0] || '00').padStart(2, '0'); };
+
+/* ================= datos ficticios ================= */
+const CLIENTE = { nombre: 'Comercial Albariza S.A.', cuit: '30-81402377-6', iva: 'IVA Responsable Inscripto', dom: 'Av. Mitre 2450, Avellaneda, Buenos Aires', periodo: 'octubre 2026' };
+const CUENTAS = {
+  '1.1.02': 'Banco c/c $', '1.1.03': 'Deudores por ventas', '1.1.05': 'Mercaderías de reventa', '1.1.06': 'IVA Crédito Fiscal',
+  '1.1.07': 'Percepciones IIBB a favor', '1.1.08': 'Recaudaciones IIBB SIRCREB', '1.1.09': 'Percepciones IVA a favor',
+  '2.1.01': 'Proveedores', '2.1.05': 'IVA a pagar', '2.1.06': 'Sueldos a pagar', '2.1.07': 'Cargas sociales a pagar',
+  '5.2.01': 'Alquileres', '5.2.02': 'Energía eléctrica', '5.2.03': 'Fletes y acarreos', '5.2.04': 'Honorarios profesionales',
+  '5.2.05': 'Servicios de limpieza', '5.2.06': 'Licencias y software', '5.2.07': 'Combustibles y lubricantes', '5.2.08': 'Correo y mensajería',
+  '5.2.09': 'Publicidad y propaganda', '5.2.10': 'Mantenimiento y reparaciones', '5.2.11': 'Gastos generales',
+  '5.4.01': 'Gastos y comisiones bancarias', '5.4.03': 'Impuesto s/ débitos y créditos bancarios'
+};
+const CUENTAS_GASTO = ['1.1.05', '5.2.01', '5.2.02', '5.2.03', '5.2.04', '5.2.05', '5.2.06', '5.2.07', '5.2.08', '5.2.09', '5.2.10', '5.2.11', '5.4.01'];
+const RI = 'IVA Responsable Inscripto';
+const P = {
+  inmob: { nombre: 'Inmobiliaria Paso del Rey S.A.', cuit: '30-80915542-7', iva: RI, dom: 'Av. Belgrano 1180, CABA', alias: 'PASO DEL REY', hist: 'Misma imputación en los 9 comprobantes anteriores de este proveedor.' },
+  papelera: { nombre: 'Papelera Monte Chingolo S.R.L.', cuit: '30-82260418-4', iva: RI, dom: 'Camino Gral. Belgrano 3920, Lanús, Buenos Aires', alias: 'MONTE CHINGOLO', hist: 'Proveedor habitual de mercadería: 23 comprobantes anteriores con esta cuenta.' },
+  energia: { nombre: 'Energía del Litoral S.A.', cuit: '30-80077164-8', iva: RI, dom: 'San Martín 505, CABA', alias: 'ENERGIA DEL LITORAL', hist: 'Servicio recurrente: misma cuenta todos los meses.' },
+  transp: { nombre: 'Transportes Quequén S.A.', cuit: '30-83351902-2', iva: RI, dom: 'Ruta 3 km 42, La Matanza, Buenos Aires', alias: 'QUEQUEN', hist: 'Misma imputación en los 14 comprobantes anteriores de este proveedor.' },
+  nubex: { nombre: 'Nubex Servicios Digitales S.R.L.', cuit: '30-84719036-8', iva: RI, dom: 'Humboldt 1550, CABA', alias: 'NUBEX', hist: 'Abono mensual: misma cuenta en los 6 comprobantes anteriores.' },
+  peralta: { nombre: 'Peralta Ramos, María Inés', cuit: '27-84206751-6', iva: 'Responsable Monotributo', dom: 'Lavalle 1430 3° B, CABA', alias: 'PERALTA RAMOS', hist: 'Honorarios mensuales: misma cuenta en los 4 comprobantes anteriores.' },
+  limpieza: { nombre: 'Limpieza Integral Sudeste S.R.L.', cuit: '30-82688140-9', iva: RI, dom: 'Alsina 780, Quilmes, Buenos Aires', alias: 'LIMPIEZA INTEGRAL', hist: 'Servicio recurrente: misma cuenta todos los meses.' },
+  estacion: { nombre: 'Estación de Servicio Ruta 8 S.A.', cuit: '30-80534826-3', iva: RI, dom: 'Ruta 8 km 31, San Miguel, Buenos Aires', alias: 'RUTA 8', hist: 'Rubro del proveedor: expendio de combustibles.' },
+  correo: { nombre: 'Correo Privado Andino S.A.', cuit: '30-81176095-8', iva: RI, dom: 'Av. Córdoba 2210, CABA', alias: 'CORREO PRIVADO ANDINO', hist: 'Misma imputación en los 11 comprobantes anteriores de este proveedor.' },
+  ferret: { nombre: 'Ferretería Industrial Lanús S.A.', cuit: '30-83904457-3', iva: RI, dom: 'Av. Hipólito Yrigoyen 4410, Lanús, Buenos Aires', alias: 'FERRETERIA INDUSTRIAL', hist: 'Misma imputación en los 5 comprobantes anteriores de este proveedor.' },
+  grafica: { nombre: 'Gráfica Villa Urquiza S.R.L.', cuit: '30-84451268-2', iva: RI, dom: 'Av. Triunvirato 4680, CABA', alias: 'GRAFICA VILLA URQUIZA', nuevo: true, hist: 'Proveedor sin comprobantes anteriores. Sugerencia según el concepto facturado (impresión de catálogos).' }
+};
+const VENTAS = [
+  { cliente: 'Supermercados Colonial S.A.', cuit: '30-80362916-8', comp: 'FC A 0003-00001245', total: 3850000, alias: 'SUPERMERCADOS COLONIAL' },
+  { cliente: 'Hotel Costanera S.A.', cuit: '30-81847630-9', comp: 'FC A 0003-00001251', total: 1210000, alias: 'HOTEL COSTANERA' }
+];
+const DOC0 = { tipo: 'FC', letra: 'A', neto: 0, iva21: 0, iva105: 0, iva27: 0, nograv: 0, percIva: 0, percIibb: 0, otros: 0, estado: 'recibido', exc: null };
+const SEED_DOCS = [
+  { id: 'c01', canal: 'mail', archivo: 'Factura_A_0005-00018344.pdf', recibido: '01/10 10:42', prov: 'inmob', pv: '0005', nro: '00018344', fecha: '01/10/2026', concepto: 'Alquiler local comercial Av. Mitre 2450, octubre 2026', items: [['Alquiler local comercial Av. Mitre 2450. Período 10/2026', 1, 950000]], neto: 950000, iva21: 199500, total: 1149500, cae: '76401122548831', caeVto: '11/10/2026', cuenta: '5.2.01', conf: .99, seg: 3.1 },
+  { id: 'c02', canal: 'carpeta', archivo: 'FC A 0003-00004512 Papelera.pdf', recibido: '03/10 16:05', prov: 'papelera', pv: '0003', nro: '00004512', fecha: '03/10/2026', concepto: 'Resmas A4 para reventa', items: [['Resma A4 75 g x 500 hojas (caja x 10)', 250, 5000]], neto: 1250000, iva21: 262500, percIibb: 37500, total: 1550000, cae: '76401398110274', caeVto: '13/10/2026', cuenta: '1.1.05', conf: .99, seg: 3.4 },
+  { id: 'c03', canal: 'arca', archivo: 'Mis Comprobantes Recibidos · 0012-00873310', recibido: '06/10 08:00', prov: 'energia', pv: '0012', nro: '00873310', fecha: '06/10/2026', concepto: 'Servicio eléctrico tarifa T2, período 09/2026', items: [['Energía eléctrica tarifa T2. Período 09/2026. Cargo fijo y variable', 1, 214600]], neto: 214600, iva27: 57942, otros: 12876, total: 285418, cae: '76401571902263', caeVto: '16/10/2026', cuenta: '5.2.02', conf: .99, seg: 1.2 },
+  { id: 'c04', canal: 'mail', archivo: '30833519022_001_00004_00012877.pdf', recibido: '09/10 11:18', prov: 'transp', pv: '0004', nro: '00012877', fecha: '09/10/2026', concepto: 'Fletes Buenos Aires – Rosario', items: [['Flete Buenos Aires – Rosario, semi completo', 4, 95000]], neto: 380000, iva21: 79800, total: 459800, cae: '76401760433915', caeVto: '19/10/2026', cuenta: '5.2.03', conf: .99, seg: 2.9 },
+  { id: 'c05', canal: 'whatsapp', archivo: 'IMG-20261010-WA0003.jpg', recibido: '10/10 09:02', prov: 'transp', pv: '0004', nro: '00012877', fecha: '09/10/2026', concepto: 'Fletes Buenos Aires – Rosario', items: [['Flete Buenos Aires – Rosario, semi completo', 4, 95000]], neto: 380000, iva21: 79800, total: 459800, cae: '76401760433915', caeVto: '19/10/2026', cuenta: '5.2.03', conf: .94, seg: 4.6 },
+  { id: 'c06', canal: 'mail', archivo: 'Nubex_Factura_Octubre.pdf', recibido: '10/10 14:30', prov: 'nubex', pv: '0002', nro: '00000931', fecha: '10/10/2026', concepto: 'Abono mensual sistema de gestión, 10 usuarios', items: [['Abono mensual sistema de gestión. 10 usuarios. Octubre 2026', 1, 145000]], neto: 145000, iva21: 30450, total: 175450, cae: '76401833207746', caeVto: '20/10/2026', cuenta: '5.2.06', conf: .99, seg: 3.0 },
+  { id: 'c07', canal: 'whatsapp', archivo: 'IMG-20261013-WA0011.jpg', recibido: '13/10 18:47', prov: 'peralta', letra: 'C', pv: '0002', nro: '00000187', fecha: '13/10/2026', concepto: 'Honorarios por asesoramiento legal, septiembre 2026', items: [['Honorarios profesionales. Asesoramiento legal 09/2026', 1, 320000]], total: 320000, cae: '76412205587109', caeVto: '23/10/2026', cuenta: '5.2.04', conf: .95, seg: 4.8 },
+  { id: 'c08', canal: 'carpeta', archivo: 'Limpieza oct 2026.pdf', recibido: '14/10 09:26', prov: 'limpieza', pv: '0001', nro: '00006620', fecha: '14/10/2026', concepto: 'Servicio de limpieza de oficinas y depósito, octubre 2026', items: [['Servicio de limpieza de oficinas y depósito. Octubre 2026', 1, 268000]], neto: 268000, iva21: 56280, total: 324280, cae: '76412377460528', caeVto: '24/10/2026', cuenta: '5.2.05', conf: .99, seg: 3.2 },
+  { id: 'c09', canal: 'carpeta', archivo: 'NC A 0003-00000218.pdf', recibido: '15/10 12:10', prov: 'papelera', tipo: 'NC', pv: '0003', nro: '00000218', fecha: '15/10/2026', concepto: 'Devolución de 17 cajas, ref. FC A 0003-00004512', items: [['Devolución resma A4 75 g (caja x 10). Ref. FC A 0003-00004512', 17, 5000]], neto: 85000, iva21: 17850, total: 102850, cae: '76412490318852', caeVto: '25/10/2026', cuenta: '1.1.05', conf: .98, seg: 3.3 },
+  { id: 'c10', canal: 'whatsapp', archivo: 'IMG-20261016-WA0021.jpg', recibido: '16/10 20:15', prov: 'estacion', pv: '0021', nro: '00044190', fecha: '16/10/2026', concepto: 'Gasoil grado 3 para reparto', items: [['Gasoil grado 3 (litros)', 62.5, 991.7355], ['Impuestos a los combustibles (ITC e IDC), no gravado', 1, 25000]], neto: 61983.47, iva21: 13016.53, nograv: 25000, total: 100000, cae: '76412588774401', caeVto: '26/10/2026', cuenta: '5.2.07', conf: .93, seg: 5.1 },
+  { id: 'c11', canal: 'mail', archivo: 'Resumen_quincenal_0007-00031502.pdf', recibido: '19/10 10:03', prov: 'correo', pv: '0007', nro: '00031502', fecha: '19/10/2026', concepto: 'Envíos de paquetería, resumen quincenal', items: [['Envíos de paquetería. Resumen 01/10 al 15/10', 1, 58400]], neto: 58400, iva21: 12264, total: 70664, cae: '76423014690037', caeVto: '29/10/2026', cuenta: '5.2.08', conf: .99, seg: 2.8 },
+  { id: 'c12', canal: 'carpeta', archivo: 'FC A 0003-00004587 Papelera.pdf', recibido: '21/10 15:44', prov: 'papelera', pv: '0003', nro: '00004587', fecha: '21/10/2026', concepto: 'Resmas y cuadernos para reventa', items: [['Resma A4 75 g x 500 hojas (caja x 10)', 300, 5000], ['Cuaderno universitario 84 hojas (pack x 20)', 160, 4000]], neto: 2140000, iva21: 449400, percIibb: 64200, total: 2653600, cae: '76423187255690', caeVto: '31/10/2026', cuenta: '1.1.05', conf: .99, seg: 3.5 },
+  { id: 'c13', canal: 'whatsapp', archivo: 'IMG-20261022-WA0007.jpg', recibido: '22/10 13:37', prov: 'ferret', pv: '0009', nro: '00002764', fecha: '22/10/2026', concepto: 'Materiales de mantenimiento para el depósito', items: [['Materiales varios de mantenimiento s/remito 0001-00004471', 1, 84300]], neto: 84300, iva21: 17703, total: 102300, borroso: true, cae: '76423260941183', caeVto: '01/11/2026', cuenta: '5.2.10', conf: .71, seg: 5.4 },
+  { id: 'c14', canal: 'mail', archivo: 'Factura catalogos.pdf', recibido: '23/10 17:20', prov: 'grafica', pv: '0001', nro: '00000412', fecha: '23/10/2026', concepto: 'Impresión de catálogos 2026, 2.000 unidades', items: [['Impresión de catálogo 24 páginas color, 2.000 unidades', 1, 620000]], neto: 620000, iva21: 130200, total: 750200, cae: '76423355802467', caeVto: '02/11/2026', cuenta: '5.2.09', conf: .97, seg: 3.1 }
+];
+const SALDO_INICIAL = 18420350.75;
+const SEED_MOVS = [
+  ['02/10', 'TRANSF. A TERCEROS 30809155427 INMOB. PASO DEL REY', -1149500], ['02/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -6897],
+  ['05/10', 'CRED. TRANSF. 30803629168 SUPERMERCADOS COLONIAL', 3850000], ['05/10', 'IMP. LEY 25.413 S/CREDITOS 0,6%', -23100], ['05/10', 'RECAUD. IIBB SIRCREB', -38500],
+  ['08/10', 'TRANSF. A TERCEROS 30822604184 PAPELERA MONTE CHINGOLO', -1550000], ['08/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -9300],
+  ['12/10', 'DEB. AUTOMATICO ENERGIA DEL LITORAL', -285418], ['12/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -1712.51],
+  ['13/10', 'PAGO VEP ARCA 0030 IVA 09/2026', -1874320], ['13/10', 'PAGO VEP ARCA 0351 SUSS 09/2026', -2316540], ['13/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -25145.16],
+  ['15/10', 'COMISION MANTENIMIENTO CTA CTE', -45000], ['15/10', 'IVA 21% S/COMISIONES', -9450],
+  ['20/10', 'TRANSF. A TERCEROS 30833519022 TRANSPORTES QUEQUEN', -459800], ['20/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -2758.8],
+  ['22/10', 'CRED. TRANSF. 30818476309 HOTEL COSTANERA', 1210000], ['22/10', 'IMP. LEY 25.413 S/CREDITOS 0,6%', -7260], ['22/10', 'RECAUD. IIBB SIRCREB', -12100],
+  ['23/10', 'TRANSF. A TERCEROS 27842067516 PERALTA RAMOS M', -300000], ['23/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -1800],
+  ['27/10', 'DEBITO VARIOS REF 00451298', -127350], ['27/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -764.1],
+  ['28/10', 'ACRED. HABERES LOTE 000231', -6480000], ['28/10', 'IMP. LEY 25.413 S/DEBITOS 0,6%', -38880]
+];
+const REGLAS = [
+  { re: /LEY 25\.?413/, cuenta: '5.4.03', motivo: 'Regla del estudio: impuesto Ley 25.413' },
+  { re: /SIRCREB/, cuenta: '1.1.08', motivo: 'Regla del estudio: recaudación bancaria de IIBB (SIRCREB)' },
+  { re: /IVA 21% S\/COMIS/, cuenta: '1.1.06', motivo: 'Regla del estudio: IVA sobre comisiones bancarias' },
+  { re: /COMISION/, cuenta: '5.4.01', motivo: 'Regla del estudio: comisiones bancarias' },
+  { re: /VEP ARCA.*IVA/, cuenta: '2.1.05', motivo: 'Regla del estudio: pago de IVA por VEP' },
+  { re: /VEP ARCA.*SUSS/, cuenta: '2.1.07', motivo: 'Regla del estudio: pago de cargas sociales (F.931) por VEP' },
+  { re: /ACRED\. HABERES/, cuenta: '2.1.06', motivo: 'Regla del estudio: acreditación de haberes' }
+];
+const POR = { mail: 'mail', whatsapp: 'WhatsApp', carpeta: 'la carpeta compartida', arca: 'ARCA', subido: 'carga manual' };
+const CANAL = { mail: 'Mail', whatsapp: 'WhatsApp', carpeta: 'Carpeta compartida', arca: 'ARCA · Mis Comprobantes', subido: 'Subido en la demo' };
+const EST = {
+  recibido: ['Recibido', 'neutral'], leyendo: ['Leyendo', 'run'], validando: ['Validando', 'run'], imputando: ['Imputando', 'run'],
+  registrado: ['Registrado', 'ok'], revisar: ['Para revisar', 'warn'], descartado: ['Descartado', 'neutral']
+};
+const EST_MOV = {
+  pendiente: ['Sin procesar', 'neutral'], conciliado: ['Conciliado', 'ok'], sugerido: ['Sugerido', 'warn'],
+  'sin-identificar': ['Sin identificar', 'bad'], confirmado: ['Confirmado', 'ok'], consultado: ['Consultado al cliente', 'info']
+};
+const SUP = { minDoc: 3, minMov: 1 };
+
+/* ================= estado ================= */
+const S = { docs: [], bank: [], processed: false, running: false, bankRun: null, fDoc: 'todos', fMov: 'todos', tab: 'comp', drawer: null, nUp: 0 };
+function seed() {
+  S.docs = SEED_DOCS.map(d => ({ ...DOC0, ...d, prov: P[d.prov], receptorCuit: CLIENTE.cuit }));
+  let saldo = SALDO_INICIAL;
+  S.bank = SEED_MOVS.map((m, i) => { saldo = r2(saldo + m[2]); return { id: 'm' + String(i + 1).padStart(2, '0'), fecha: m[0], desc: m[1], importe: m[2], saldo, estado: 'pendiente', exc: null }; });
+  Object.assign(S, { processed: false, running: false, bankRun: null, fDoc: 'todos', fMov: 'todos', tab: 'comp', drawer: null });
+}
+
+/* ================= lógica contable ================= */
+const stageOf = d => ({ recibido: 0, leyendo: 1, validando: 2, imputando: 3 }[d.estado] ?? 4);
+const leido = d => stageOf(d) === 4;
+const tipoNombre = d => d.tipoLabel || ((d.tipo === 'NC' ? 'Nota de Crédito ' : d.tipo === 'ND' ? 'Nota de Débito ' : 'Factura ') + (d.letra || '')).trim();
+const tipoCorto = d => d.tipoLabel ? d.tipoLabel : `${d.tipo} ${d.letra || ''}`.trim();
+const codArca = d => ({ FC: { A: '001', B: '006', C: '011', M: '051' }, ND: { A: '002', B: '007', C: '012' }, NC: { A: '003', B: '008', C: '013', M: '053' } }[d.tipo]?.[d.letra] || '');
+const compNum = d => `${d.pv || '—'}-${d.nro || '—'}`;
+const claveDoc = d => [d.prov.cuit.replace(/\D/g, ''), d.tipo, d.letra, +d.pv || d.pv, +d.nro || d.nro].join('|');
+const ivaDe = d => r2(d.iva21 + d.iva105 + d.iva27);
+const componentes = d => r2(d.neto + d.nograv + d.iva21 + d.iva105 + d.iva27 + d.percIva + d.percIibb + d.otros);
+function duplicadoDe(d) {
+  if (d.dupOk || !d.nro) return null;
+  const i = S.docs.indexOf(d), k = claveDoc(d);
+  return S.docs.find((o, j) => j < i && o.estado !== 'descartado' && claveDoc(o) === k) || null;
+}
+function validar(d) {
+  const comp = componentes(d), sinDisc = (d.letra === 'B' || d.letra === 'C') && comp === 0, dup = duplicadoDe(d), V = [];
+  V.push({ k: 'dup', ok: !dup, t: 'Sin duplicados en el período', det: dup ? `Coincide con ${dup.archivo} (mismo CUIT, punto de venta y número).` : 'Clave: CUIT emisor, tipo, punto de venta y número.' });
+  V.push({ k: 'cuit', ok: cuitOk(d.prov.cuit), t: 'CUIT del emisor válido', det: cuitOk(d.prov.cuit) ? `${d.prov.cuit}, dígito verificador correcto.` : `${d.prov.cuit || 'Sin CUIT'}: el dígito verificador no coincide.` });
+  if (!d.subido) V.push({ k: 'rec', ok: d.receptorCuit === CLIENTE.cuit, t: 'El receptor es el cliente', det: `${CLIENTE.nombre}, CUIT ${CLIENTE.cuit}.` });
+  V.push({ k: 'suma', ok: sinDisc || Math.abs(comp - d.total) < 0.015, t: 'Los importes cierran', det: sinDisc ? 'Comprobante sin IVA discriminado: se toma el total.' : `Suma de conceptos ${money(comp)}, total ${money(d.total)}.` });
+  V.push({ k: 'cae', ok: /^\d{14}$/.test(d.cae || ''), soft: !!d.subido, t: 'CAE informado', det: d.cae ? `${d.cae}${d.caeVto ? ', vence ' + d.caeVto : ''}.` : 'No se encontró un CAE de 14 dígitos en el comprobante.' });
+  if (!d.subido) V.push({ k: 'arca', ok: true, sim: true, t: 'Figura en Mis Comprobantes Recibidos (ARCA)', det: 'Cruce con la descarga de ARCA del período.' });
+  return V;
+}
+function evaluar(d) {
+  const f = validar(d).find(v => !v.ok && !v.soft);
+  if (f) { d.estado = 'revisar'; d.exc = { kind: f.k }; }
+  else if (d.prov.nuevo && !d.cuentaOk) { d.estado = 'revisar'; d.exc = { kind: 'nuevo' }; }
+  else { d.estado = 'registrado'; }
+}
+function asientoDoc(d) {
+  const credito = d.letra === 'A' || d.letra === 'M';
+  const iva = credito ? ivaDe(d) : 0, pIva = credito ? d.percIva : 0, pIibb = d.percIibb;
+  const gasto = r2(d.total - iva - pIva - pIibb), nc = d.tipo === 'NC';
+  const L = [[d.cuenta, gasto], ['1.1.06', iva], ['1.1.09', pIva], ['1.1.07', pIibb]].filter(x => x[1] > 0.004)
+    .map(([c, v]) => nc ? { c, debe: 0, haber: v } : { c, debe: v, haber: 0 });
+  const prov = nc ? { c: '2.1.01', debe: d.total, haber: 0 } : { c: '2.1.01', debe: 0, haber: d.total };
+  return nc ? [prov, ...L] : [...L, prov];
+}
+function asientoMov(m) {
+  const v = Math.abs(m.importe);
+  return m.importe < 0 ? [{ c: m.cuenta, debe: v, haber: 0 }, { c: '1.1.02', debe: 0, haber: v }] : [{ c: '1.1.02', debe: v, haber: 0 }, { c: m.cuenta, debe: 0, haber: v }];
+}
+function conciliar() {
+  S.docs.forEach(d => { d.pagado = false; });
+  for (const m of S.bank) {
+    m.exc = null; m.doc = null; m.venta = null; m.msg = false;
+    const regla = REGLAS.find(r => r.re.test(m.desc));
+    if (regla) { m.estado = 'conciliado'; m.cuenta = regla.cuenta; m.motivo = regla.motivo; continue; }
+    if (m.importe < 0) {
+      const cand = S.docs.filter(d => d.estado === 'registrado' && d.tipo !== 'NC' && !d.pagado && d.prov.alias && m.desc.includes(d.prov.alias));
+      const exacto = cand.find(d => Math.abs(d.total + m.importe) < 0.01);
+      if (exacto) { exacto.pagado = true; Object.assign(m, { estado: 'conciliado', cuenta: '2.1.01', doc: exacto.id, motivo: 'Coinciden el proveedor y el importe con el comprobante.' }); }
+      else if (cand.length) { Object.assign(m, { estado: 'sugerido', cuenta: '2.1.01', doc: cand[0].id, motivo: 'Proveedor identificado, el importe no coincide con el comprobante.', exc: { kind: 'parcial' } }); }
+      else { Object.assign(m, { estado: 'sin-identificar', cuenta: null, motivo: 'No coincide con ningún comprobante ni regla.', exc: { kind: 'sinid' } }); }
+    } else {
+      const v = VENTAS.find(x => m.desc.includes(x.alias) && Math.abs(x.total - m.importe) < 0.01);
+      if (v) Object.assign(m, { estado: 'conciliado', cuenta: '1.1.03', venta: v, motivo: 'Coinciden el cliente y el importe con la factura de venta emitida.' });
+      else Object.assign(m, { estado: 'sin-identificar', cuenta: null, motivo: 'No coincide con ninguna factura emitida.', exc: { kind: 'sinid' } });
+    }
+  }
+}
+const docDe = id => S.docs.find(d => d.id === id);
+const movDe = id => S.bank.find(m => m.id === id);
+function stats() {
+  const D = S.docs, B = S.bank;
+  const reg = D.filter(d => d.estado === 'registrado').length, rev = D.filter(d => d.estado === 'revisar').length;
+  const auto = D.filter(d => d.estado === 'registrado' && !d.exc).length;
+  const mok = B.filter(m => m.estado === 'conciliado' || m.estado === 'confirmado').length, mauto = B.filter(m => m.estado === 'conciliado').length;
+  const mrev = B.filter(m => ['sugerido', 'sin-identificar', 'consultado'].includes(m.estado)).length;
+  return { total: D.length, reg, rev, auto, mt: B.length, mok, mauto, mrev, pend: rev + mrev, min: D.length * SUP.minDoc + B.length * SUP.minMov };
+}
+function excepciones() {
+  const L = [];
+  S.docs.forEach(d => { if (d.exc) L.push({ es: 'doc', id: d.id, kind: d.exc.kind, res: d.estado !== 'revisar', d }); });
+  S.bank.forEach(m => { if (m.exc) L.push({ es: 'mov', id: m.id, kind: m.exc.kind, res: m.estado === 'confirmado', m }); });
+  return L;
+}
+function excTexto(x) {
+  if (x.es === 'doc') {
+    const d = x.d, ref = `${tipoCorto(d)} ${compNum(d)} de ${d.prov.nombre}`;
+    if (x.kind === 'dup') { const o = duplicadoDe(d) || S.docs.find(o => o !== d && claveDoc(o) === claveDoc(d)); return ['Posible duplicado', `${ref} ya está en el lote: llegó por ${POR[o?.canal] || 'otro canal'} el ${o?.recibido.slice(0, 5) || ''}. Este archivo llegó por ${POR[d.canal]} el ${d.recibido.slice(0, 5)} con el mismo CUIT, punto de venta, número e importe.`]; }
+    if (x.kind === 'suma') { const c = componentes(d); return ['Los importes no cierran', `${ref}: la suma de conceptos da ${money(c)} y el total leído es ${money(d.total)} (diferencia ${money(Math.abs(r2(d.total - c)))}).${d.borroso ? ' La foto tiene baja legibilidad en el total.' : ''}`]; }
+    if (x.kind === 'nuevo') return ['Proveedor nuevo sin imputación', `${d.prov.nombre} no tiene comprobantes anteriores. Concepto: ${d.concepto}. Total ${money(d.total)}.`];
+    if (x.kind === 'cuit') return ['CUIT del emisor inválido', `${ref}: el CUIT leído (${d.prov.cuit || 'vacío'}) no pasa el dígito verificador. Puede ser un error de lectura o del comprobante.`];
+    return ['Requiere revisión', `${ref}: no pasó una validación.`];
+  }
+  const m = x.m;
+  if (x.kind === 'parcial') { const d = docDe(m.doc); return ['El pago no coincide con el comprobante', `Transferencia de ${money(Math.abs(m.importe))} a ${d.prov.nombre} el ${m.fecha}. El comprobante abierto es ${tipoCorto(d)} ${compNum(d)} por ${money(d.total)}. Sugerencia: pago parcial; queda un saldo de ${money(r2(d.total + m.importe))} en Proveedores.`]; }
+  return ['Movimiento sin identificar', `${m.importe < 0 ? 'Débito' : 'Crédito'} de ${money(Math.abs(m.importe))} el ${m.fecha} («${m.desc}»). No coincide con ningún comprobante ni regla del estudio.`];
+}
+
+/* ================= vistas ================= */
+const pillDoc = d => `<span class="pill ${EST[d.estado][1]}" data-st="${d.id}">${EST[d.estado][0]}</span>`;
+const pillMov = m => `<span class="pill ${EST_MOV[m.estado][1]}">${EST_MOV[m.estado][0]}</span>`;
+const cuentaTxt = c => c ? `<span class="code">${c}</span> ${esc(CUENTAS[c])}` : '<span class="note">Sin imputar</span>';
+const durMin = min => min >= 60 ? `${Math.floor(min / 60)} h ${String(Math.round(min % 60)).padStart(2, '0')} min` : `${Math.round(min)} min`;
+
+function pipeHTML() {
+  const D = S.docs, n = D.length, at = k => D.some(d => stageOf(d) === k);
+  const c = [n, D.filter(d => stageOf(d) >= 2).length, D.filter(d => stageOf(d) >= 3).length, D.filter(d => stageOf(d) >= 4).length, D.filter(d => d.estado === 'registrado').length];
+  const steps = [
+    ['Recepción', 'Mail, WhatsApp, carpeta y ARCA'], ['Lectura', 'Datos fiscales e importes'], ['Validación', 'CUIT, sumas, duplicados y CAE'],
+    ['Imputación', 'Cuenta contable por proveedor'], ['Planilla', 'Listos para importar']
+  ];
+  return steps.map(([t, s], i) => {
+    const cls = i === 0 ? 'done' : (S.running && i < 4 && at(i)) ? 'active' : (i < 4 ? (n > 0 && c[i] === n) : S.processed) ? 'done' : '';
+    return `<li class="${cls}"><span class="n">${c[i]}<small> / ${n}</small></span><strong>${t}</strong><span class="c">${s}</span></li>`;
+  }).join('');
+}
+function tilesHTML() {
+  const st = stats(), ver = S.processed || S.running;
+  return `<div class="tile"><b>${st.total}</b><span>Comprobantes en el lote</span></div>
+      <div class="tile"><b>${st.reg}<small> / ${st.total}</small></b><span>Comprobantes registrados</span></div>
+      <div class="tile"><b>${st.mok}<small> / ${st.mt}</small></b><span>Movimientos conciliados</span></div>
+      <div class="tile ${ver && st.pend ? 'attn' : ''}"><b>${ver ? st.pend : '—'}</b><span>Casos para revisar</span></div>`;
+}
+function inRowMeta(d) {
+  const base = `${CANAL[d.canal]} · ${d.recibido}`;
+  return leido(d) ? `${esc(d.prov.nombre)} · ${tipoCorto(d)} ${compNum(d)} · ${money(d.tipo === 'NC' ? -d.total : d.total)}` : base;
+}
+function bankCardBody() {
+  const st = stats(), fin = S.bank[S.bank.length - 1].saldo;
+  const estado = S.bankRun != null ? `<span class="pill run">Conciliando ${S.bankRun} / ${st.mt}</span>` : S.processed ? `<span class="pill ${st.mrev ? 'warn' : 'ok'}">${st.mok} de ${st.mt} conciliados</span>` : '<span class="pill neutral">Recibido</span>';
+  const w = S.bankRun != null ? (S.bankRun / st.mt * 100) : S.processed ? (st.mok / st.mt * 100) : 0;
+  return `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><strong>Cuenta corriente en pesos</strong>${estado}</div>
+    <div class="bar" style="margin:10px 0 12px"><i style="width:${w}%"></i></div>
+    <dl class="kv"><dt>Movimientos</dt><dd>${st.mt}</dd><dt>Saldo inicial</dt><dd>${money(SALDO_INICIAL)}</dd><dt>Saldo final</dt><dd>${money(fin)}</dd></dl>`;
+}
+function viewPanel() {
+  const st = stats(), proc = S.processed;
+  const head = S.running ? `<h1>Procesando el lote de octubre</h1><p class="lead">Cada comprobante pasa por lectura, validación e imputación. Después se concilia el extracto bancario.</p>` : proc
+    ? `<h1>${st.auto} de ${st.total} comprobantes quedaron registrados sin intervención</h1><p class="lead">Del extracto de ${CLIENTE.periodo}, ${st.mauto} de ${st.mt} movimientos se conciliaron solos. ${st.pend ? `${st.pend === 1 ? 'Queda 1 caso que necesita' : `Quedan ${st.pend} casos que necesitan`} una decisión de una persona.` : 'No quedan casos por revisar: la planilla está completa.'}</p>`
+    : `<h1>Lote de octubre listo para procesar</h1><p class="lead">Llegaron ${st.total} comprobantes y el extracto bancario por los canales que el cliente ya usa. Todavía no se registró nada.</p>`;
+  const cta = S.running ? '<button class="btn cta" disabled><span class="spin"></span>Procesando…</button>'
+    : proc ? `${st.pend ? `<a class="btn primary" href="#excepciones">Revisar ${st.pend} ${pl(st.pend, 'excepción', 'excepciones')}${ic('arrow')}</a>` : ''}<a class="btn ghost" href="#exportacion">Ver planilla de importación</a>`
+    : `<button class="btn cta" data-act="procesar">${ic('play')}Procesar lote</button>`;
+  const res = proc ? `<ul class="res-list">
+      <li>${ic('check')}<span><strong>${st.auto} comprobantes</strong> leídos, validados e imputados sin intervención.</span></li>
+      <li>${ic('check')}<span><strong>${st.mauto} movimientos bancarios</strong> conciliados contra comprobantes o reglas del estudio.</span></li>
+      <li class="${st.pend ? 'w' : ''}">${ic(st.pend ? 'bang' : 'check')}<span><strong>${st.pend} ${pl(st.pend, 'caso espera', 'casos esperan')}</strong> una decisión, con la evidencia a la vista.</span></li>
+      <li>${ic('check')}<span>Carga manual equivalente: <strong>≈ ${durMin(st.min)}</strong>.</span></li></ul>
+      <p class="note" style="margin-top:10px">Estimación con ${SUP.minDoc} min por comprobante y ${SUP.minMov} min por movimiento. Se ajusta en Impacto.</p>`
+    : `<ol class="plain"><li>Lee cada comprobante, venga como PDF, foto o descarga de ARCA.</li><li>Valida CUIT, sumas, duplicados y CAE.</li><li>Imputa la cuenta contable según el historial del proveedor.</li><li>Concilia el extracto contra los comprobantes y las reglas del estudio.</li><li>Arma la planilla de importación y separa lo que necesita revisión.</li></ol>`;
+  const cli0 = S.running ? ['Procesando lote de octubre', 'run'] : proc ? (st.pend ? [`Octubre procesado, ${st.pend} para revisar`, 'warn'] : ['Octubre listo para importar', 'ok']) : ['Lote de octubre recibido', 'neutral'];
+  return `<div class="wrap">
+    <div class="hero"><div>${head}</div><div class="acts">${cta}</div></div>
+    <div class="tiles" id="tiles">${tilesHTML()}</div>
+    <ol class="pipe" id="pipe" aria-label="Etapas del proceso">${pipeHTML()}</ol>
+    <div class="cols">
+      <section class="card"><div class="card-h"><h2>Bandeja de entrada</h2><small>${st.total} comprobantes de ${CLIENTE.periodo}</small></div>
+        <ul class="inbox">${S.docs.map(d => `<li><button class="in-row" data-act="open-doc" data-id="${d.id}"><span class="ch ${d.canal}" title="${CANAL[d.canal]}">${ic(d.canal)}</span><span style="min-width:0"><strong>${esc(d.archivo)}</strong><small data-meta="${d.id}">${inRowMeta(d)}</small></span>${pillDoc(d)}</button></li>`).join('')}</ul>
+      </section>
+      <div class="stack">
+        <section class="card"><div class="card-h"><h2>Extracto bancario</h2><small>${CLIENTE.periodo}</small></div><div class="card-b" id="bank-card">${bankCardBody()}</div></section>
+        <section class="card"><div class="card-h"><h2>${proc ? 'Resultado del lote' : 'Qué hace el proceso'}</h2></div><div class="card-b">${res}</div></section>
+        <section class="card"><div class="card-h"><h2>Clientes del estudio</h2><small>4 con contabilidad a cargo</small></div>
+          <div class="tbl-wrap"><table class="tbl"><tbody>
+            <tr><td><strong>${CLIENTE.nombre}</strong></td><td><span class="pill ${cli0[1]}">${cli0[0]}</span></td></tr>
+            <tr class="dim"><td>Constructora Yapeyú S.R.L.</td><td><span class="pill ok">Al día, último lote 12/11</span></td></tr>
+            <tr class="dim"><td>Agroservicios La Aguada S.A.</td><td><span class="pill warn">Falta el extracto de octubre</span></td></tr>
+            <tr class="dim"><td>Veterinaria Maitén S.A.S.</td><td><span class="pill ok">Al día, último lote 10/11</span></td></tr>
+          </tbody></table></div>
+        </section>
+      </div>
+    </div></div>`;
+}
+function viewComprobantes() {
+  const f = S.fDoc, st = stats();
+  const rows = S.docs.filter(d => f === 'todos' || (f === 'ok' && d.estado === 'registrado') || (f === 'rev' && d.estado === 'revisar'));
+  const chip = (k, t) => `<button class="chip" data-act="f-doc" data-f="${k}" aria-pressed="${f === k}">${t}</button>`;
+  const tr = d => {
+    if (!leido(d)) return `<tr class="click dim" data-act="open-doc" data-id="${d.id}" tabindex="0"><td>—</td><td>${esc(d.archivo)}<small>${CANAL[d.canal]} · sin leer</small></td><td>—</td><td class="num">—</td><td class="num">—</td><td class="num opt">—</td><td class="num">—</td><td>—</td><td class="stick">${pillDoc(d)}</td></tr>`;
+    const s = d.tipo === 'NC' ? -1 : 1, otros = r2(d.nograv + d.percIva + d.percIibb + d.otros), n = v => v ? `<span class="${s < 0 ? 'neg' : ''}">${fmt(s * v)}</span>` : '—';
+    return `<tr class="click ${d.estado === 'descartado' ? 'dim' : ''}" data-act="open-doc" data-id="${d.id}" tabindex="0"><td class="nowrap">${d.fecha}</td><td class="nowrap">${tipoCorto(d)} ${compNum(d)}<small>${CANAL[d.canal]}</small></td><td class="w-prov">${esc(d.prov.nombre)}<small class="nowrap">${d.prov.cuit}</small></td><td class="num">${n(d.neto)}</td><td class="num">${n(ivaDe(d))}</td><td class="num opt">${n(otros)}</td><td class="num">${n(d.total)}</td><td class="w-cta">${cuentaTxt(d.cuenta)}</td><td class="stick">${pillDoc(d)}</td></tr>`;
+  };
+  return `<div class="wrap">
+    <div class="hero"><div><h1>Comprobantes de compra</h1><p class="lead">${S.processed ? `${st.reg} registrados y ${st.rev} para revisar. Cada fila abre el comprobante con los datos leídos, las validaciones y el asiento.` : 'El lote todavía no se procesó. Los datos aparecen al procesarlo desde el Panel.'}</p></div>
+      <div class="acts">${S.processed ? '' : `<a class="btn primary" href="#panel">Ir al Panel${ic('arrow')}</a>`}</div></div>
+    <div class="chips">${chip('todos', `Todos (${S.docs.length})`)}${chip('ok', `Registrados (${st.reg})`)}${chip('rev', `Para revisar (${st.rev})`)}</div>
+    <section class="card"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Comprobante</th><th>Proveedor</th><th class="num">Neto gravado</th><th class="num">IVA</th><th class="num opt">Perc. / otros</th><th class="num">Total</th><th>Imputación</th><th class="stick">Estado</th></tr></thead>
+      <tbody>${rows.map(tr).join('') || '<tr><td colspan="9" class="empty">No hay comprobantes en este filtro.</td></tr>'}</tbody></table></div></section></div>`;
+}
+function viewBancos() {
+  const f = S.fMov, st = stats();
+  const rows = S.bank.filter(m => f === 'todos' || (f === 'ok' && (m.estado === 'conciliado' || m.estado === 'confirmado')) || (f === 'rev' && ['sugerido', 'sin-identificar', 'consultado'].includes(m.estado)));
+  const chip = (k, t) => `<button class="chip" data-act="f-mov" data-f="${k}" aria-pressed="${f === k}">${t}</button>`;
+  const vinc = m => { if (m.doc) { const d = docDe(m.doc); return `<small>${tipoCorto(d)} ${compNum(d)} · ${esc(d.prov.nombre)}</small>`; } if (m.venta) return `<small>${m.venta.comp} · ${esc(m.venta.cliente)}</small>`; return ''; };
+  const tr = m => `<tr class="click" data-act="open-mov" data-id="${m.id}" tabindex="0"><td class="nowrap">${m.fecha}</td><td>${esc(m.desc)}</td><td class="num">${m.importe < 0 ? fmt(-m.importe) : ''}</td><td class="num">${m.importe > 0 ? fmt(m.importe) : ''}</td><td class="num">${fmt(m.saldo)}</td><td class="w-cta">${m.estado === 'pendiente' ? '—' : cuentaTxt(m.cuenta) + vinc(m)}</td><td class="stick">${pillMov(m)}</td></tr>`;
+  const rev = st.mt - st.mok;
+  return `<div class="wrap">
+    <div class="hero"><div><h1>Conciliación bancaria</h1><p class="lead">${S.processed ? `${st.mok} de ${st.mt} movimientos conciliados. Los impuestos y comisiones se imputan por regla; los pagos y cobranzas se cruzan con los comprobantes.` : 'El extracto está recibido y sin procesar. La conciliación corre junto con el lote desde el Panel.'}</p></div>
+      <div class="acts">${S.processed ? '' : `<a class="btn primary" href="#panel">Ir al Panel${ic('arrow')}</a>`}</div></div>
+    <div class="chips">${chip('todos', `Todos (${st.mt})`)}${chip('ok', `Conciliados (${st.mok})`)}${chip('rev', `Para revisar (${S.processed ? rev : 0})`)}</div>
+    <section class="card"><div class="card-h"><h2>Cuenta corriente en pesos, ${CLIENTE.periodo}</h2><small>Saldo inicial ${money(SALDO_INICIAL)} · saldo final ${money(S.bank[S.bank.length - 1].saldo)}</small></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Descripción del banco</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th><th>Imputación</th><th class="stick">Estado</th></tr></thead>
+      <tbody>${rows.map(tr).join('') || '<tr><td colspan="7" class="empty">No hay movimientos en este filtro.</td></tr>'}</tbody></table></div></section></div>`;
+}
+function selCuenta(id, val) {
+  return `<select id="${id}" aria-label="Cuenta contable">${CUENTAS_GASTO.map(c => `<option value="${c}" ${c === val ? 'selected' : ''}>${c} ${esc(CUENTAS[c])}</option>`).join('')}</select>`;
+}
+function excCard(x) {
+  const [tit, det] = excTexto(x), id = x.id, o = x.es === 'doc' ? x.d : x.m;
+  const ver = x.es === 'doc' ? `<button class="btn ghost sm" data-act="open-doc" data-id="${id}">Ver comprobante</button>` : `<button class="btn ghost sm" data-act="open-mov" data-id="${id}">Ver movimiento</button>`;
+  const tipo = `<span class="pill neutral">${x.es === 'doc' ? 'Comprobante' : 'Banco'}</span>`;
+  if (x.res) return `<article class="exc res"><div class="exc-main"><div class="exc-top">${tipo}<h3>${tit}</h3></div><p class="resol">${ic('check')}<span>${esc(o.exc.resol || 'Resuelto.')}</span></p><div class="exc-acts">${ver}</div></div></article>`;
+  let extra = '', acts = '';
+  if (x.kind === 'dup') acts = `<button class="btn primary sm" data-act="exc-descartar" data-id="${id}">Descartar duplicado</button><button class="btn ghost sm" data-act="exc-conservar" data-id="${id}">Registrar igual</button>`;
+  else if (x.kind === 'suma') acts = (componentes(o) > 0 ? `<button class="btn primary sm" data-act="exc-corregir" data-id="${id}">Corregir el total a ${money(componentes(o))} y registrar</button>` : '') + (o.subido ? `<button class="btn ghost sm" data-act="exc-conservar" data-id="${id}">Registrar con el total leído</button><button class="btn ghost sm" data-act="exc-descartar" data-id="${id}">Descartar</button>` : '');
+  else if (x.kind === 'nuevo') { extra = `<div class="exc-acts"><label for="acc-${id}">Imputar a</label>${selCuenta('acc-' + id, o.cuenta)}</div><p class="note">La imputación queda guardada para los próximos comprobantes de este proveedor.</p>`; acts = `<button class="btn primary sm" data-act="exc-cuenta" data-id="${id}">Confirmar imputación y registrar</button>`; }
+  else if (x.kind === 'parcial') acts = `<button class="btn primary sm" data-act="exc-parcial" data-id="${id}">Confirmar pago parcial</button>`;
+  else if (x.kind === 'sinid') {
+    if (o.msg) extra = `<div class="msg" id="msg-${id}">${esc(msgCliente(o))}</div><p class="note">Mensaje listo para enviar por el canal habitual del cliente. El movimiento queda marcado como consultado.</p>`;
+    acts = `${o.msg ? `<button class="btn primary sm" data-act="copy-msg" data-id="${id}">${ic('copy')}Copiar mensaje</button>` : `<button class="btn primary sm" data-act="exc-pedir" data-id="${id}">Pedir comprobante al cliente</button>`}<label for="acc-${id}">o imputar a</label>${selCuenta('acc-' + id, '5.2.11')}<button class="btn ghost sm" data-act="exc-imputar" data-id="${id}">Imputar</button>`;
+  } else acts = `<button class="btn primary sm" data-act="exc-conservar" data-id="${id}">Registrar igual</button><button class="btn ghost sm" data-act="exc-descartar" data-id="${id}">Descartar</button>`;
+  const estado = x.es === 'mov' && o.estado === 'consultado' ? '<span class="pill info">Consultado al cliente</span>' : '';
+  return `<article class="exc ${x.kind === 'sinid' ? 'bad' : ''}"><div class="exc-main"><div class="exc-top">${tipo}<h3>${tit}</h3>${estado}</div><p>${esc(det)}</p>${extra}<div class="exc-acts">${acts}${ver}</div></div></article>`;
+}
+const msgCliente = m => `Hola, ¿cómo están? Para cerrar ${CLIENTE.periodo} nos falta identificar un ${m.importe < 0 ? 'débito' : 'crédito'} del ${m.fecha} por ${money(Math.abs(m.importe))} en la cuenta corriente (referencia del banco: ${m.desc}). ¿Nos pasan el comprobante o nos cuentan a qué corresponde? ¡Gracias!`;
+function viewExcepciones() {
+  const L = excepciones(), pend = L.filter(x => !x.res), res = L.filter(x => x.res);
+  if (!L.length) return `<div class="wrap"><div class="hero"><div><h1>Excepciones</h1><p class="lead">Acá llega solo lo que necesita una decisión de una persona. ${S.processed ? 'Este lote no dejó casos para revisar.' : 'Todavía no hay casos porque el lote no se procesó.'}</p></div></div>
+    <section class="card"><div class="empty">${S.processed ? 'Sin excepciones pendientes.' : 'Procesá el lote para ver qué casos quedan para revisar.'}<br>${S.processed ? '' : `<a class="btn primary" href="#panel">Ir al Panel${ic('arrow')}</a>`}</div></section></div>`;
+  return `<div class="wrap">
+    <div class="hero"><div><h1>${pend.length ? `${pend.length} ${pl(pend.length, 'caso necesita', 'casos necesitan')} una decisión` : 'No quedan casos por revisar'}</h1><p class="lead">Todo lo demás ya está registrado. Cada caso muestra por qué se frenó y la acción sugerida; nada se registra sin que alguien lo confirme.</p></div>
+      <div class="acts">${pend.length ? '' : `<a class="btn primary" href="#exportacion">Ver planilla de importación${ic('arrow')}</a>`}</div></div>
+    ${pend.map(excCard).join('')}
+    ${res.length ? `<h2 style="margin-top:6px">Resueltos en esta sesión</h2>${res.map(excCard).join('')}` : ''}</div>`;
+}
+
+/* ---------- exportación ---------- */
+const H_COMP = ['Fecha', 'Tipo', 'Cód. ARCA', 'Pto. Vta.', 'Número', 'CUIT emisor', 'Denominación', 'Neto gravado', 'No gravado / exento', 'IVA 21%', 'IVA 10,5%', 'IVA 27%', 'Perc. IVA', 'Perc. IIBB', 'Otros tributos', 'Total', 'Cuenta', 'Descripción de la cuenta'];
+const H_ASI = ['Asiento', 'Fecha', 'Cuenta', 'Descripción', 'Debe', 'Haber', 'Leyenda', 'Origen'];
+const H_PEN = ['Origen', 'Fecha', 'Detalle', 'Importe', 'Motivo', 'Estado'];
+function filasComp() {
+  return S.docs.filter(d => d.estado === 'registrado').sort((a, b) => fechaKey(a.fecha).localeCompare(fechaKey(b.fecha))).map(d => {
+    const s = d.tipo === 'NC' ? -1 : 1;
+    return [d.fecha, tipoNombre(d), codArca(d), d.pv, d.nro, d.prov.cuit, d.prov.nombre, s * d.neto, s * d.nograv, s * d.iva21, s * d.iva105, s * d.iva27, s * d.percIva, s * d.percIibb, s * d.otros, s * d.total, d.cuenta, CUENTAS[d.cuenta]];
+  });
+}
+function leyendaMov(m) {
+  if (m.doc) { const d = docDe(m.doc); return `Pago ${tipoCorto(d)} ${compNum(d)} ${d.prov.nombre}`; }
+  if (m.venta) return `Cobranza ${m.venta.comp} ${m.venta.cliente}`;
+  return m.desc;
+}
+function filasAsi() {
+  const it = [];
+  S.docs.filter(d => d.estado === 'registrado').forEach(d => it.push({ f: d.fecha, ley: `${tipoCorto(d)} ${compNum(d)} ${d.prov.nombre}`, org: 'Comprobante', L: asientoDoc(d) }));
+  S.bank.filter(m => m.estado === 'conciliado' || m.estado === 'confirmado').forEach(m => it.push({ f: m.fecha + '/2026', ley: leyendaMov(m), org: 'Banco', L: asientoMov(m) }));
+  it.sort((a, b) => fechaKey(a.f).localeCompare(fechaKey(b.f)));
+  const rows = [];
+  it.forEach((a, i) => a.L.forEach(l => rows.push([i + 1, a.f, l.c, CUENTAS[l.c], l.debe, l.haber, a.ley, a.org])));
+  return rows;
+}
+function filasPen() {
+  const rows = [];
+  S.docs.filter(d => d.estado === 'revisar').forEach(d => rows.push(['Comprobante', d.fecha, `${tipoCorto(d)} ${compNum(d)} ${d.prov.nombre}`, d.total, excTexto({ es: 'doc', kind: d.exc.kind, d })[0], 'Para revisar']));
+  S.bank.filter(m => ['sugerido', 'sin-identificar', 'consultado'].includes(m.estado)).forEach(m => rows.push(['Banco', m.fecha + '/2026', m.desc, m.importe, excTexto({ es: 'mov', kind: m.exc.kind, m })[0], EST_MOV[m.estado][0]]));
+  return rows;
+}
+const HOJAS = { comp: ['Comprobantes', H_COMP, filasComp], asi: ['Asientos', H_ASI, filasAsi], pen: ['Pendientes', H_PEN, filasPen] };
+function sheetHTML(h, rows, moneyIdx = [], totals = false) {
+  const cell = (v, i) => moneyIdx.includes(i) ? `<td class="num ${v < 0 ? 'neg' : ''}">${v ? fmt(v) : ''}</td>` : `<td${typeof v === 'number' ? ' class="num"' : ''}>${esc(v)}</td>`;
+  const foot = totals && rows.length ? `<tfoot><tr>${h.map((_, i) => moneyIdx.includes(i) ? `<td class="num">${fmt(rows.reduce((s, r) => s + r[i], 0))}</td>` : `<td>${i === 0 ? 'Totales' : ''}</td>`).join('')}</tr></tfoot>` : '';
+  return `<table class="tbl"><thead><tr>${h.map((t, i) => `<th class="${moneyIdx.includes(i) ? 'num' : ''}">${t}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(cell).join('')}</tr>`).join('') || `<tr><td colspan="${h.length}" class="empty">Sin filas.</td></tr>`}</tbody>${foot}</table>`;
+}
+function viewExportacion() {
+  const st = stats(), fc = filasComp(), fa = filasAsi(), fp = filasPen(), nAsi = fa.length ? fa[fa.length - 1][0] : 0;
+  const t = S.tab, tab = (k, n, c) => `<button class="tab" role="tab" data-act="tab" data-tab="${k}" aria-selected="${t === k}">${n} (${c})</button>`;
+  const body = t === 'comp' ? sheetHTML(H_COMP, fc, [7, 8, 9, 10, 11, 12, 13, 14, 15], true) : t === 'asi' ? sheetHTML(H_ASI, fa, [4, 5], true) : sheetHTML(H_PEN, fp, [3]);
+  const vacio = !fc.length && !fa.length;
+  return `<div class="wrap">
+    <div class="hero"><div><h1>Planilla de importación</h1><p class="lead">${vacio ? 'La planilla se arma al procesar el lote. Todavía no hay nada para importar.' : `${fc.length} comprobantes y ${nAsi} asientos listos para importar al sistema contable.${fp.length ? ` ${fp.length} ${pl(fp.length, 'caso pendiente queda', 'casos pendientes quedan')} afuera hasta que se resuelvan.` : ' No quedan pendientes.'}`}</p></div>
+      <div class="acts">${vacio ? `<a class="btn primary" href="#panel">Ir al Panel${ic('arrow')}</a>` : `<button class="btn primary" data-act="descargar">${ic('export')}Descargar planilla .xlsx</button><button class="btn ghost" data-act="copiar-tabla">${ic('copy')}Copiar para pegar en Excel</button>`}</div></div>
+    <section class="card"><div class="tabs" role="tablist">${tab('comp', 'Comprobantes', fc.length)}${tab('asi', 'Asientos', nAsi)}${tab('pen', 'Pendientes', fp.length)}</div><div class="sheet tbl-wrap">${body}</div></section>
+    <p class="note">Las columnas siguen un formato genérico de importación. En una implementación se ajustan al modelo de planilla del sistema contable que use el estudio y al plan de cuentas de cada cliente.</p></div>`;
+}
+
+/* ---------- impacto ---------- */
+const IMP = { docs: 400, movs: 600, minDoc: SUP.minDoc, minMov: SUP.minMov, autoDoc: 79, autoMov: 92, minExc: 2 };
+function impCalc() {
+  const manual = (IMP.docs * IMP.minDoc + IMP.movs * IMP.minMov) / 60;
+  const auto = (IMP.docs * (1 - IMP.autoDoc / 100) + IMP.movs * (1 - IMP.autoMov / 100)) * IMP.minExc / 60;
+  return { manual, auto, lib: Math.max(0, manual - auto), pct: manual > 0 ? Math.max(0, (1 - auto / manual) * 100) : 0 };
+}
+function impOut() {
+  const r = impCalc(), mx = Math.max(r.manual, r.auto, 1), h = v => v.toLocaleString('es-AR', { maximumFractionDigits: 1 }) + ' h';
+  return `<p class="eyebrow">Horas liberadas por mes</p><p class="big">${h(r.lib)}</p><p class="note" style="margin:4px 0 16px">Reducción de ${Math.round(r.pct)} % sobre la carga manual, con estos supuestos.</p>
+    <div class="cmp"><div class="cmp-row a"><span>Carga manual</span><div class="bar"><i style="width:${r.manual / mx * 100}%"></i></div><b>${h(r.manual)}</b></div>
+    <div class="cmp-row"><span>Revisión de excepciones</span><div class="bar"><i style="width:${r.auto / mx * 100}%"></i></div><b>${h(r.auto)}</b></div></div>`;
+}
+function viewImpacto() {
+  const fld = (k, l, step = 1, max = '') => `<div class="field"><label for="imp-${k}">${l}</label><input type="number" id="imp-${k}" data-imp="${k}" min="0" ${max ? `max="${max}"` : ''} step="${step}" value="${IMP[k]}" inputmode="decimal"></div>`;
+  return `<div class="wrap">
+    <div class="hero"><div><h1>Impacto estimado</h1><p class="lead">Una cuenta simple para dimensionar el caso con los números reales del estudio. Los valores iniciales son de ejemplo y se pueden cambiar.</p></div></div>
+    <div class="cols">
+      <section class="card"><div class="card-h"><h2>Volumen y tiempos del estudio</h2></div><div class="card-b"><div class="form">
+        ${fld('docs', 'Comprobantes por mes (todos los clientes)')}${fld('movs', 'Movimientos bancarios por mes')}
+        ${fld('minDoc', 'Minutos por comprobante, carga manual', .5)}${fld('minMov', 'Minutos por movimiento, carga manual', .5)}
+        ${fld('autoDoc', '% de comprobantes sin intervención', 1, 100)}${fld('autoMov', '% de movimientos sin intervención', 1, 100)}
+        ${fld('minExc', 'Minutos por excepción revisada', .5)}</div>
+        <p class="note" style="margin-top:12px">Los porcentajes sin intervención parten del resultado del lote de esta demo (11 de 14 comprobantes y 23 de 25 movimientos). En un caso real se miden con una muestra de comprobantes del estudio.</p></div></section>
+      <section class="card"><div class="card-h"><h2>Resultado</h2></div><div class="card-b" id="imp-out">${impOut()}</div></section>
+    </div></div>`;
+}
+
+/* ---------- detalle ---------- */
+function facturaHTML(d) {
+  if (d.img) return `<div class="shot"><img src="${d.img}" alt="Comprobante subido"></div>`;
+  const nc = d.tipo === 'NC', discr = d.letra === 'A';
+  const filas = d.items.map(([t, c, pu]) => `<tr><td>${esc(t)}</td><td class="r">${c.toLocaleString('es-AR')}</td><td class="r">${fmt(pu)}</td><td class="r">${fmt(r2(c * pu))}</td></tr>`).join('');
+  const tot = [];
+  if (discr) {
+    tot.push(['Importe Neto Gravado', d.neto, 1]);
+    if (d.iva27) tot.push(['IVA 27%', d.iva27, 1]);
+    if (d.iva21) tot.push(['IVA 21%', d.iva21, 1]);
+    if (d.iva105) tot.push(['IVA 10,5%', d.iva105, 1]);
+    if (d.nograv) tot.push(['Conceptos no gravados', d.nograv, 1]);
+    if (d.percIibb) tot.push(['Percepción IIBB Bs. As.', d.percIibb, 1]);
+    if (d.otros) tot.push(['Otros tributos', d.otros, 1]);
+  } else tot.push(['Subtotal', d.total, 0]);
+  const totH = tot.map(([l, v, h]) => `<span>${l}: $</span><b class="${h ? 'hl' : ''}">${fmt(v)}</b>`).join('') + `<span class="t">Importe Total: $</span><b class="t ${d.borroso ? 'smudge' : 'hl'}">${fmt(d.total)}</b>`;
+  const fx = `<div class="fx"><div class="fx-wm">EJEMPLO</div>
+    <div class="fx-head"><div><b class="rs hl">${esc(d.prov.nombre)}</b>${esc(d.prov.dom)}<br>Condición frente al IVA: ${esc(d.prov.iva)}</div>
+      <div class="fx-letra"><b>${d.letra}</b><span>COD. ${codArca(d).slice(1)}</span></div>
+      <div><div class="fx-tipo">${nc ? 'NOTA DE CRÉDITO' : 'FACTURA'}</div>Punto de Venta: <span class="hl">${d.pv}</span> &nbsp; Comp. Nro: <span class="hl">${d.nro}</span><br>Fecha de Emisión: <span class="hl">${d.fecha}</span><br>CUIT: <span class="hl">${d.prov.cuit.replace(/-/g, '')}</span></div></div>
+    <div class="fx-rec"><span>CUIT: ${CLIENTE.cuit.replace(/-/g, '')}</span><span>Razón Social: ${esc(CLIENTE.nombre)}</span><span>Condición frente al IVA: ${CLIENTE.iva}</span><span>Condición de venta: Cuenta corriente</span></div>
+    <table><thead><tr><th>Producto / Servicio</th><th class="r">Cantidad</th><th class="r">Precio unit.</th><th class="r">Subtotal</th></tr></thead><tbody>${filas}</tbody></table>
+    <div class="fx-tot">${totH}</div>
+    <div class="fx-cae"><span>Comprobante de ejemplo, sin validez fiscal</span><span>CAE N°: <span class="hl">${d.cae}</span> &nbsp; Vto. de CAE: ${d.caeVto}</span></div></div>`;
+  return d.canal === 'whatsapp' ? `<div class="foto">${fx}</div>` : fx;
+}
+function asientoHTML(L) {
+  return `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Cuenta</th><th class="num">Debe</th><th class="num">Haber</th></tr></thead><tbody>${L.map(l => `<tr><td>${cuentaTxt(l.c)}</td><td class="num">${l.debe ? fmt(l.debe) : ''}</td><td class="num">${l.haber ? fmt(l.haber) : ''}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Totales</td><td class="num">${fmt(L.reduce((s, l) => s + l.debe, 0))}</td><td class="num">${fmt(L.reduce((s, l) => s + l.haber, 0))}</td></tr></tfoot></table></div>`;
+}
+function drawerDoc(d) {
+  const cerrar = `<button class="icon-btn" data-act="close-drawer" aria-label="Cerrar detalle">${ic('x')}</button>`;
+  if (!leido(d)) return `<header class="dw-head"><div><span class="eyebrow">${CANAL[d.canal]} · recibido ${d.recibido}</span><h2>${esc(d.archivo)}</h2></div><div class="r">${pillDoc(d)}${cerrar}</div></header>
+    <div class="dw-body one"><div class="sec"><h3>Sin procesar</h3><p>Este archivo está en la bandeja y todavía no se leyó. Al procesar el lote aparecen acá los datos extraídos, las validaciones y el asiento.</p><p style="margin-top:12px"><button class="btn cta" data-act="procesar-desde-detalle">${ic('play')}Procesar lote</button></p></div></div>`;
+  const V = validar(d), row = (l, v, mono) => `<dt>${l}</dt><dd ${mono ? 'style="font-family:var(--mono);font-size:12.5px"' : ''}>${v}</dd>`;
+  const s = d.tipo === 'NC' ? -1 : 1, m = v => money(s * v);
+  let datos = row('Tipo', `${tipoNombre(d)}${codArca(d) ? ` (cód. ${codArca(d)})` : ''}`) + row('Punto de venta y número', compNum(d), 1) + row('Fecha de emisión', d.fecha || '—') + row('Emisor', esc(d.prov.nombre)) + row('CUIT del emisor', d.prov.cuit || '—', 1) + row('Condición frente al IVA', esc(d.prov.iva || '—'));
+  if (d.receptor) datos += row('Receptor', esc(d.receptor));
+  if (d.neto) datos += row('Neto gravado', m(d.neto), 1);
+  if (d.iva21) datos += row('IVA 21%', m(d.iva21), 1);
+  if (d.iva105) datos += row('IVA 10,5%', m(d.iva105), 1);
+  if (d.iva27) datos += row('IVA 27%', m(d.iva27), 1);
+  if (d.nograv) datos += row('No gravado / exento', m(d.nograv), 1);
+  if (d.percIva) datos += row('Percepción IVA', m(d.percIva), 1);
+  if (d.percIibb) datos += row('Percepción IIBB', m(d.percIibb), 1);
+  if (d.otros) datos += row('Otros tributos', m(d.otros), 1);
+  datos += row('<strong>Total</strong>', `<strong>${m(d.total)}</strong>`, 1);
+  let call = '';
+  if (d.estado === 'revisar') { const [t, det] = excTexto({ es: 'doc', kind: d.exc.kind, d }); call = `<div class="callout warn"><strong>${t}</strong><span>${esc(det)}</span><span><a class="btn ghost sm" href="#excepciones" data-act="close-drawer-nav">Resolver en Excepciones${ic('arrow')}</a></span></div>`; }
+  else if (d.exc?.resol) call = `<div class="callout ok"><strong>Excepción resuelta</strong><span>${esc(d.exc.resol)}</span></div>`;
+  const checks = V.map(v => `<li class="${v.ok ? '' : v.soft ? 'soft' : 'fail'}"><span class="m">${ic(v.ok ? 'check' : 'bang')}</span><span>${v.t}${v.sim ? '<span class="sim">simulado</span>' : ''}<small>${esc(v.det)}</small></span></li>`).join('');
+  const asi = d.estado === 'registrado' ? asientoHTML(asientoDoc(d)) : `<p class="note">${d.estado === 'descartado' ? 'Comprobante descartado: no genera asiento.' : 'El asiento se genera cuando se resuelve la excepción.'}</p>`;
+  return `<header class="dw-head"><div><span class="eyebrow">${CANAL[d.canal]} · recibido ${d.recibido}</span><h2>${tipoNombre(d)} ${compNum(d)}</h2><p>${esc(d.prov.nombre)} · ${esc(d.concepto || '')}</p></div><div class="r">${pillDoc(d)}${cerrar}</div></header>
+    <div class="dw-body"><div class="prev">${facturaHTML(d)}</div>
+      <div class="dw-data">${call}
+        <div class="sec"><h3>Datos leídos del comprobante</h3><dl class="kv">${datos}</dl><div class="conf" style="margin-top:10px"><span>Confianza de lectura</span><div class="bar"><i style="width:${Math.round(d.conf * 100)}%;${d.conf < .8 ? 'background:var(--amber)' : ''}"></i></div><span>${Math.round(d.conf * 100)} %</span></div></div>
+        <div class="sec"><h3>Validaciones</h3><ul class="checks">${checks}</ul></div>
+        <div class="sec"><h3>Imputación</h3><p>${cuentaTxt(d.cuenta)}</p><p class="note" style="margin-top:6px">${esc(d.motivo || d.prov.hist || '')}</p></div>
+        <div class="sec"><h3>Asiento</h3>${asi}</div>
+        <div class="sec"><h3>Trazabilidad</h3><dl class="kv">${row('Origen', CANAL[d.canal])}${row('Archivo', esc(d.archivo))}${row('Recibido', d.recibido)}${row('Tiempo de proceso', `${d.seg.toLocaleString('es-AR', { maximumFractionDigits: 1 })} s`)}</dl></div>
+      </div></div>`;
+}
+function drawerMov(m) {
+  const cerrar = `<button class="icon-btn" data-act="close-drawer" aria-label="Cerrar detalle">${ic('x')}</button>`;
+  const row = (l, v) => `<dt>${l}</dt><dd>${v}</dd>`;
+  let call = '', vinc = '';
+  if (m.exc && m.estado !== 'confirmado') { const [t, det] = excTexto({ es: 'mov', kind: m.exc.kind, m }); call = `<div class="callout warn"><strong>${t}</strong><span>${esc(det)}</span><span><a class="btn ghost sm" href="#excepciones" data-act="close-drawer-nav">Resolver en Excepciones${ic('arrow')}</a></span></div>`; }
+  else if (m.exc?.resol) call = `<div class="callout ok"><strong>Excepción resuelta</strong><span>${esc(m.exc.resol)}</span></div>`;
+  if (m.doc) { const d = docDe(m.doc); vinc = `<div class="sec"><h3>Comprobante vinculado</h3><p><strong>${tipoCorto(d)} ${compNum(d)}</strong> · ${esc(d.prov.nombre)} · ${money(d.total)}</p><p style="margin-top:8px"><button class="btn ghost sm" data-act="open-doc" data-id="${d.id}">Ver comprobante</button></p></div>`; }
+  if (m.venta) vinc = `<div class="sec"><h3>Factura de venta vinculada</h3><p><strong>${m.venta.comp}</strong> · ${esc(m.venta.cliente)} · ${money(m.venta.total)}</p><p class="note" style="margin-top:6px">Tomada de los comprobantes emitidos del período.</p></div>`;
+  const cuerpo = m.estado === 'pendiente' ? `<div class="sec"><h3>Sin procesar</h3><p>El extracto está recibido. La conciliación corre junto con el lote desde el Panel.</p></div>`
+    : `${call}<div class="sec"><h3>Imputación</h3><p>${cuentaTxt(m.cuenta)}</p><p class="note" style="margin-top:6px">${esc(m.motivo || '')}</p></div>${vinc}
+       <div class="sec"><h3>Asiento</h3>${m.cuenta && (m.estado === 'conciliado' || m.estado === 'confirmado') ? asientoHTML(asientoMov(m)) : '<p class="note">El asiento se genera cuando se resuelve la excepción.</p>'}</div>`;
+  return `<header class="dw-head"><div><span class="eyebrow">Extracto bancario · ${m.fecha}</span><h2>${esc(m.desc)}</h2><p>${m.importe < 0 ? 'Débito' : 'Crédito'} de ${money(Math.abs(m.importe))}</p></div><div class="r">${pillMov(m)}${cerrar}</div></header>
+    <div class="dw-body one"><div class="dw-data"><div class="sec"><h3>Movimiento</h3><dl class="kv">${row('Fecha', m.fecha + '/2026')}${row('Descripción del banco', esc(m.desc))}${row('Importe', money(m.importe))}${row('Saldo posterior', money(m.saldo))}</dl></div>${cuerpo}</div></div>`;
+}
+
+/* ================= render y navegación ================= */
+const VISTAS = { panel: ['Panel', 'panel', viewPanel], comprobantes: ['Comprobantes', 'doc', viewComprobantes], bancos: ['Bancos', 'bank', viewBancos], excepciones: ['Excepciones', 'alert', viewExcepciones], exportacion: ['Planilla', 'export', viewExportacion], impacto: ['Impacto', 'chart', viewImpacto] };
+const ruta = () => { const h = location.hash.replace('#', ''); return VISTAS[h] ? h : 'panel'; };
+function renderNav() {
+  const r = ruta(), pend = S.processed || S.nUp ? stats().pend : 0;
+  $('#nav').innerHTML = Object.entries(VISTAS).map(([k, [t, i]]) => `<a href="#${k}" ${k === r ? 'aria-current="page"' : ''}>${ic(i)}<span class="lbl">${t}</span>${k === 'excepciones' ? `<span class="count">${pend || ''}</span>` : ''}</a>`).join('');
+}
+function render() {
+  renderNav();
+  $('#view').innerHTML = VISTAS[ruta()][2]();
+  renderDrawer();
+}
+function renderDrawer() {
+  const dw = $('#drawer'), sc = $('#scrim'), x = S.drawer;
+  const o = x && (x.es === 'doc' ? docDe(x.id) : movDe(x.id));
+  if (!o) { dw.hidden = sc.hidden = true; dw.innerHTML = ''; return; }
+  dw.innerHTML = x.es === 'doc' ? drawerDoc(o) : drawerMov(o);
+  dw.hidden = sc.hidden = false;
+}
+function paintLive(d) {
+  const p = $('#pipe'); if (p) p.innerHTML = pipeHTML();
+  const ti = $('#tiles'); if (ti) ti.innerHTML = tilesHTML();
+  const el = $(`[data-st="${d.id}"]`); if (el) { el.className = 'pill ' + EST[d.estado][1]; el.textContent = EST[d.estado][0]; }
+  const me = $(`[data-meta="${d.id}"]`); if (me) me.innerHTML = inRowMeta(d);
+}
+let toastT;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 3200); }
+
+/* ================= proceso del lote ================= */
+async function procesar() {
+  if (S.running || S.processed) return;
+  S.running = true; S.drawer = null; render();
+  const k = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1;
+  await Promise.all(S.docs.filter(d => d.estado === 'recibido').map(async (d, i) => {
+    await wait(230 * i * k);
+    for (const e of ['leyendo', 'validando', 'imputando']) { d.estado = e; paintLive(d); await wait(300 * k); }
+    evaluar(d); paintLive(d);
+  }));
+  for (let i = 1; i <= S.bank.length; i++) { S.bankRun = i; const c = $('#bank-card'); if (c) c.innerHTML = bankCardBody(); await wait(50 * k); }
+  conciliar();
+  Object.assign(S, { running: false, processed: true, bankRun: null });
+  render();
+  const st = stats(); toast(`Lote procesado: ${st.auto} comprobantes y ${st.mauto} movimientos sin intervención.`);
+  const v = $('#view'); if (ruta() === 'panel') v.scrollTop = 0;
+}
+
+/* ================= acciones sobre excepciones ================= */
+function reconciliarSiHaceFalta() { if (S.processed) { const prev = new Map(S.bank.map(m => [m.id, { estado: m.estado, exc: m.exc, cuenta: m.cuenta, msg: m.msg, doc: m.doc }])); conciliar(); S.bank.forEach(m => { const p = prev.get(m.id); if (p && ['confirmado', 'consultado'].includes(p.estado)) Object.assign(m, p); }); } }
+const ACC = {
+  'exc-descartar'(id) { const d = docDe(id); d.estado = 'descartado'; d.exc.resol = 'Se descartó: no entra en la planilla ni genera asiento.'; toast('Comprobante descartado.'); },
+  'exc-conservar'(id) { const d = docDe(id); d.dupOk = true; d.estado = 'registrado'; d.exc.resol = 'Se registró por decisión del usuario.'; reconciliarSiHaceFalta(); toast('Comprobante registrado.'); },
+  'exc-corregir'(id) { const d = docDe(id), ant = d.total; d.total = componentes(d); d.borroso = false; d.estado = 'registrado'; d.exc.resol = `Total corregido de ${money(ant)} a ${money(d.total)} y comprobante registrado.`; reconciliarSiHaceFalta(); toast('Total corregido y comprobante registrado.'); },
+  'exc-cuenta'(id) { const d = docDe(id); d.cuenta = $('#acc-' + id).value; d.cuentaOk = true; d.estado = 'registrado'; d.motivo = 'Imputación confirmada por el usuario. Queda guardada para este proveedor.'; d.exc.resol = `Imputado a ${d.cuenta} ${CUENTAS[d.cuenta]}. La regla queda guardada para ${d.prov.nombre}.`; reconciliarSiHaceFalta(); toast('Imputación confirmada.'); },
+  'exc-parcial'(id) { const m = movDe(id), d = docDe(m.doc); m.estado = 'confirmado'; m.motivo = 'Pago parcial confirmado por el usuario.'; m.exc.resol = `Pago parcial de ${tipoCorto(d)} ${compNum(d)} confirmado. Saldo de ${money(r2(d.total + m.importe))} en Proveedores.`; toast('Pago parcial confirmado.'); },
+  'exc-pedir'(id) { const m = movDe(id); m.msg = true; m.estado = 'consultado'; toast('Mensaje preparado. El movimiento quedó como consultado.'); },
+  'exc-imputar'(id) { const m = movDe(id); m.cuenta = $('#acc-' + id).value; m.estado = 'confirmado'; m.motivo = 'Imputación manual confirmada por el usuario.'; m.exc.resol = `Imputado a ${m.cuenta} ${CUENTAS[m.cuenta]}.`; toast('Movimiento imputado.'); }
+};
+
+/* ================= exportación ================= */
+let DL = null, SAMPLE = null, LIMITS = null, capsListas = false;
+function tsv(k) { const [, h, f] = HOJAS[k]; return [h, ...f()].map(r => r.map(v => typeof v === 'number' ? String(v).replace('.', ',') : String(v ?? '')).join('\t')).join('\n'); }
+function libro() {
+  const wb = XLSX.utils.book_new();
+  for (const k of ['comp', 'asi', 'pen']) {
+    const [n, h, f] = HOJAS[k], rows = f(), ws = XLSX.utils.aoa_to_sheet([h, ...rows]);
+    ws['!cols'] = h.map((t, i) => ({ wch: Math.min(48, Math.max(t.length + 2, ...rows.map(r => String(typeof r[i] === 'number' ? fmt(r[i]) : r[i] ?? '').length + 2))) }));
+    const moneyCols = k === 'comp' ? [7, 8, 9, 10, 11, 12, 13, 14, 15] : k === 'asi' ? [4, 5] : [3];
+    rows.forEach((r, ri) => moneyCols.forEach(ci => { const c = ws[XLSX.utils.encode_cell({ r: ri + 1, c: ci })]; if (c && c.t === 'n') c.z = '#,##0.00'; }));
+    XLSX.utils.book_append_sheet(wb, ws, n);
+  }
+  return XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+}
+async function descargar() {
+  let filename = 'planilla-importacion-octubre-2026.xlsx', blob;
+  try {
+    if (window.XLSX) blob = new Blob([libro()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    else { filename = 'comprobantes-octubre-2026.csv'; blob = new Blob(['﻿' + [H_COMP, ...filasComp()].map(r => r.map(v => typeof v === 'number' ? String(v).replace('.', ',') : `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n')], { type: 'text/csv' }); }
+  } catch (e) { toast('No se pudo armar la planilla. Probá con «Copiar para pegar en Excel».'); return; }
+  if (DL) {
+    try { await DL.save({ filename, data: blob }); toast('Planilla guardada.'); }
+    catch (e) { toast(e?.code === 'declined' ? 'Descarga cancelada.' : 'No se pudo guardar el archivo en esta vista. Usá «Copiar para pegar en Excel».'); }
+    return;
+  }
+  try { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; document.body.appendChild(a); a.click(); a.remove(); toast('Planilla generada.'); }
+  catch (e) { toast('La descarga no está disponible en esta vista. Usá «Copiar para pegar en Excel».'); }
+}
+async function copiar(texto, ok) { try { await navigator.clipboard.writeText(texto); toast(ok); } catch (e) { toast('No se pudo copiar en esta vista.'); } }
+
+/* ================= lectura de un comprobante real con IA ================= */
+let upCtl = null;
+function upRender(estado, msg) {
+  const b = $('#up-b');
+  if (estado === 'work') { b.innerHTML = `<div class="work"><span class="spin"></span><span id="up-msg">${esc(msg)}</span></div><p class="note">Suele tardar entre 10 y 40 segundos según el comprobante.</p><div><button class="btn ghost sm" data-act="upload-cancel">Cancelar</button></div>`; return; }
+  const sin = capsListas && !SAMPLE;
+  b.innerHTML = `${msg ? `<div class="err">${esc(msg)}</div>` : ''}
+    ${sin ? '<div class="err">La lectura de comprobantes reales no está activa en esta versión publicada. En la reunión se muestra con el lote de ejemplo.</div>' : ''}
+    <label class="drop" id="drop" for="up-file">${ic('subido')}<strong>Arrastrá una factura o elegí un archivo</strong><span>PDF, JPG o PNG. Se lee la primera página.</span><input type="file" id="up-file" accept="application/pdf,image/jpeg,image/png,image/webp"></label>
+    <p class="note">Claude lee el archivo y devuelve los datos; después corren las mismas validaciones que en el lote (CUIT, sumas, duplicados) y el comprobante se suma a la planilla. Usá un comprobante que puedas compartir.</p>`;
+}
+const cortar = (cv, y0, y1) => { const c = document.createElement('canvas'); c.width = cv.width; c.height = Math.round((y1 - y0) * cv.height); c.getContext('2d').drawImage(cv, 0, -Math.round(y0 * cv.height)); return c; };
+const aBlob = c => new Promise(r => c.toBlob(r, 'image/jpeg', .9));
+async function archivoALienzo(file) {
+  let cv = document.createElement('canvas'), texto = '';
+  if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) {
+    if (!window.pdfjsLib) throw { code: 'sin_pdf' };
+    const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), isEvalSupported: false }).promise;
+    const pg = await pdf.getPage(1), v0 = pg.getViewport({ scale: 1 }), vp = pg.getViewport({ scale: Math.min(3, 1800 / v0.width) });
+    cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    for (let i = 1; i <= Math.min(pdf.numPages, 2); i++) { const tc = await (await pdf.getPage(i)).getTextContent(); texto += tc.items.map(t => t.str + (t.hasEOL ? '\n' : ' ')).join('') + '\n'; }
+  } else {
+    const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => createImageBitmap(file));
+    const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  }
+  return { cv, texto: texto.trim().slice(0, 12000) };
+}
+const aNum = x => { if (typeof x === 'number') return isFinite(x) ? x : 0; if (typeof x !== 'string') return 0; let s = x.replace(/[^\d.,-]/g, ''); if (s.includes(',') && s.lastIndexOf(',') > s.lastIndexOf('.')) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(/,/g, ''); const n = parseFloat(s); return isFinite(n) ? n : 0; };
+function promptLectura(texto) {
+  return `Sos un asistente de registración contable en Argentina. La imagen es un comprobante (factura, nota de crédito o débito, ticket o recibo). Si hay más de una imagen, la primera es la página completa y las siguientes son recortes ampliados de la misma página.
+${texto ? `\nTexto extraído del PDF (puede estar desordenado, usalo junto con la imagen):\n"""\n${texto}\n"""\n` : ''}
+Extraé los datos y respondé SOLO con un objeto JSON con esta forma exacta. Los importes van como números con punto decimal, sin separador de miles y en positivo aunque sea una nota de crédito. Usá 0 cuando un importe no figure y null cuando un dato de texto no se pueda leer.
+{"es_comprobante": true, "tipo": "Factura" | "Nota de Crédito" | "Nota de Débito" | "Ticket" | "Recibo" | "Otro", "letra": "A" | "B" | "C" | "M" | "E" | null, "punto_venta": "0003", "numero": "00001234", "fecha": "DD/MM/AAAA", "emisor_razon_social": "", "emisor_cuit": "solo dígitos", "emisor_condicion_iva": "", "receptor_razon_social": "", "receptor_cuit": "solo dígitos", "concepto": "qué se facturó, en una línea", "neto_gravado": 0, "iva_21": 0, "iva_105": 0, "iva_27": 0, "no_gravado_exento": 0, "percepciones_iva": 0, "percepciones_iibb": 0, "otros_tributos": 0, "total": 0, "cae": "14 dígitos o null", "cae_vencimiento": "DD/MM/AAAA o null", "cuenta": "código del plan de cuentas", "cuenta_motivo": "por qué esa cuenta, en una línea", "dudosos": ["nombres de los campos que no se leen con seguridad"]}
+Reglas:
+- Si el comprobante es B o C y no discrimina IVA, dejá neto_gravado y los IVA en 0 y completá total.
+- "cuenta": elegí el código más adecuado según lo facturado, de este plan de cuentas: ${CUENTAS_GASTO.map(c => `${c} ${CUENTAS[c]}`).join('; ')}.
+- Si la imagen no es un comprobante, respondé {"es_comprobante": false}.`;
+}
+const ERR_IA = { not_granted: 'No se dio permiso para usar Claude en esta vista.', sampling_disabled: 'Claude no está disponible para esta cuenta.', rate_limited: 'Se alcanzó el límite de uso. Probá de nuevo en unos minutos.', session_expired: 'La sesión venció. Volvé a iniciar sesión y probá de nuevo.', image_rejected: 'No se pudo usar ese archivo. Probá con otra imagen o PDF.', images_unavailable: 'Esta vista no puede enviar imágenes a Claude.', refused: 'Claude no pudo procesar ese archivo. Probá con otro comprobante.', invalid_json: 'La lectura no devolvió datos utilizables. Probá de nuevo.', sin_pdf: 'No se pudo abrir el PDF en esta vista. Probá con una foto o captura del comprobante.' };
+async function leerComprobante(file) {
+  if (!file) return;
+  if (!SAMPLE) { upRender('idle', capsListas ? '' : 'La lectura con IA todavía se está iniciando. Probá de nuevo en unos segundos.'); return; }
+  upCtl = new AbortController(); const ctl = upCtl, t0 = performance.now();
+  upRender('work', 'Preparando el archivo…');
+  const pasos = ['Leyendo el comprobante…', 'Extrayendo datos fiscales e importes…', 'Sugiriendo la imputación contable…'];
+  let pi = 0; const tick = setInterval(() => { const el = $('#up-msg'); if (el && pi < pasos.length) el.textContent = pasos[pi++]; }, 3500);
+  try {
+    const { cv, texto } = await archivoALienzo(file);
+    const max = LIMITS?.images?.maxCount || 1, alto = cv.height / cv.width > 1.15;
+    const lienzos = [cv, ...(alto && max >= 3 ? [cortar(cv, 0, .56), cortar(cv, .44, 1)] : [])].slice(0, max);
+    const blobs = await Promise.all(lienzos.map(aBlob));
+    const el = $('#up-msg'); if (el) el.textContent = pasos[pi++];
+    const j = await SAMPLE.json(promptLectura(texto), { images: blobs, signal: ctl.signal });
+    if (!j || j.es_comprobante === false) { upRender('idle', 'El archivo no parece un comprobante. Probá con una factura, nota de crédito o ticket.'); return; }
+    const tipoTxt = String(j.tipo || 'Factura'), tipo = /cr[eé]dito/i.test(tipoTxt) ? 'NC' : /d[eé]bito/i.test(tipoTxt) ? 'ND' : 'FC';
+    const letra = /^[ABCME]$/.test(String(j.letra || '').toUpperCase()) ? String(j.letra).toUpperCase() : '';
+    const dud = Array.isArray(j.dudosos) ? j.dudosos.length : 0;
+    const d = {
+      ...DOC0, id: 'u' + (++S.nUp), subido: true, canal: 'subido', archivo: file.name, recibido: ahoraTxt(),
+      tipo, letra, tipoLabel: /factura|nota/i.test(tipoTxt) ? '' : `${tipoTxt} ${letra}`.trim(),
+      pv: String(j.punto_venta || '').replace(/\D/g, ''), nro: String(j.numero || '').replace(/\D/g, ''), fecha: String(j.fecha || ''),
+      prov: { nombre: String(j.emisor_razon_social || 'Emisor sin identificar'), cuit: fmtCuit(j.emisor_cuit), iva: String(j.emisor_condicion_iva || ''), alias: '' },
+      receptor: [j.receptor_razon_social, j.receptor_cuit ? fmtCuit(j.receptor_cuit) : ''].filter(Boolean).join(' · '),
+      concepto: String(j.concepto || ''), neto: aNum(j.neto_gravado), iva21: aNum(j.iva_21), iva105: aNum(j.iva_105), iva27: aNum(j.iva_27), nograv: aNum(j.no_gravado_exento),
+      percIva: aNum(j.percepciones_iva), percIibb: aNum(j.percepciones_iibb), otros: aNum(j.otros_tributos), total: aNum(j.total),
+      cae: String(j.cae || '').replace(/\D/g, ''), caeVto: j.cae_vencimiento ? String(j.cae_vencimiento) : '',
+      cuenta: CUENTAS[j.cuenta] ? j.cuenta : '5.2.11', motivo: `Sugerida por IA según el concepto facturado. ${j.cuenta_motivo || ''}`.trim(),
+      conf: Math.max(.5, .98 - .08 * dud), seg: (performance.now() - t0) / 1000, img: URL.createObjectURL(blobs[0])
+    };
+    S.docs.push(d); evaluar(d);
+    $('#up').hidden = true; S.drawer = { es: 'doc', id: d.id }; render();
+    toast(d.estado === 'registrado' ? 'Comprobante leído, validado y sumado a la planilla.' : 'Comprobante leído. Quedó para revisar.');
+  } catch (e) {
+    if (e?.code === 'cancelled') upRender('idle', '');
+    else upRender('idle', ERR_IA[e?.code] || 'No se pudo leer el comprobante. Probá de nuevo o con otro archivo.');
+  } finally { clearInterval(tick); if (upCtl === ctl) upCtl = null; }
+}
+
+/* ================= eventos ================= */
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  if (a === 'procesar') procesar();
+  else if (a === 'procesar-desde-detalle') { S.drawer = null; if (ruta() !== 'panel') location.hash = 'panel'; procesar(); }
+  else if (a === 'reset') { if (upCtl) upCtl.abort(); seed(); S.nUp = 0; if (ruta() !== 'panel') location.hash = 'panel'; render(); $('#view').scrollTop = 0; toast('Demo reiniciada.'); }
+  else if (a === 'open-doc') { S.drawer = { es: 'doc', id }; renderDrawer(); }
+  else if (a === 'open-mov') { S.drawer = { es: 'mov', id }; renderDrawer(); }
+  else if (a === 'close-drawer' || a === 'close-drawer-nav') { S.drawer = null; renderDrawer(); }
+  else if (a === 'f-doc') { S.fDoc = el.dataset.f; render(); }
+  else if (a === 'f-mov') { S.fMov = el.dataset.f; render(); }
+  else if (a === 'tab') { S.tab = el.dataset.tab; render(); }
+  else if (a === 'descargar') descargar();
+  else if (a === 'copiar-tabla') copiar(tsv(S.tab), 'Tabla copiada. Pegala en Excel.');
+  else if (a === 'copy-msg') copiar(msgCliente(movDe(id)), 'Mensaje copiado.');
+  else if (a === 'upload-open') { $('#up').hidden = false; upRender('idle', ''); }
+  else if (a === 'upload-close') { if (upCtl) upCtl.abort(); $('#up').hidden = true; }
+  else if (a === 'upload-cancel') { if (upCtl) upCtl.abort(); }
+  else if (ACC[a]) { ACC[a](id); render(); }
+});
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape') { if (!$('#up').hidden) { if (upCtl) upCtl.abort(); $('#up').hidden = true; } else if (S.drawer) { S.drawer = null; renderDrawer(); } }
+  if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches?.('tr.click')) { ev.preventDefault(); ev.target.click(); }
+});
+document.addEventListener('input', ev => {
+  const k = ev.target.dataset?.imp; if (!k) return;
+  let v = parseFloat(ev.target.value); if (!isFinite(v) || v < 0) v = 0; if (k.startsWith('auto')) v = Math.min(100, v);
+  IMP[k] = v; $('#imp-out').innerHTML = impOut();
+});
+document.addEventListener('change', ev => { if (ev.target.id === 'up-file') leerComprobante(ev.target.files[0]); });
+document.addEventListener('dragover', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', ev => { ev.target.closest?.('#drop')?.classList.remove('over'); });
+document.addEventListener('drop', ev => { const d = ev.target.closest?.('#drop'); if (d) { ev.preventDefault(); d.classList.remove('over'); leerComprobante(ev.dataTransfer.files[0]); } });
+window.addEventListener('hashchange', () => { S.drawer = null; render(); $('#view').scrollTop = 0; });
+
+/* ================= inicio ================= */
+$('#cli-n').textContent = CLIENTE.nombre;
+$('#cli-d').textContent = `CUIT ${CLIENTE.cuit} · Período ${CLIENTE.periodo}`;
+seed(); render();
+(async () => {
+  try {
+    if (window.claude?.use) {
+      const [s, d] = await Promise.all([claude.use('sample').catch(() => null), claude.use('downloads').catch(() => null)]);
+      SAMPLE = s; DL = d;
+      if (SAMPLE) LIMITS = await SAMPLE.limits().catch(() => null);
+    }
+  } catch (e) { /* la demo funciona igual sin estas capacidades */ }
+  capsListas = true;
+  if (!$('#up').hidden && !upCtl) upRender('idle', '');
+})();
+</script>
+</body>
+</html>
